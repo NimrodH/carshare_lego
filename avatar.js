@@ -40,14 +40,13 @@ class Avatar {
     /// Create a lego avatar from the "man" model data
     async createLegoAvatar(scene) {
         try {
-            // Get the table URL - use global tableURL from lego1.js if available
-            const modelURL = typeof window.tableURL !== 'undefined' 
-                ? window.tableURL 
-                : 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
+            // Use the CORS gateway from index.html: t8l4i3853e.execute-api.us-east-1.amazonaws.com/V1/
+            // The route is the full model API URL, queryParam is the formatted query string
+            const modelRoute = 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
+            const queryParam = '?myStep=ALL';
             
-            // Use getData function from lego_index.html to fetch model data
-            // Same pattern as used in lego1.js: getData(tableURL, { 'myStep': 'ALL' })
-            let modelDataObj = await getData(modelURL, { 'myStep': 'ALL' });
+            // Call getData with route and queryParam separately (following index.html pattern)
+            let modelDataObj = await getData(modelRoute, queryParam);
             let allModelData = modelDataObj.Items;
             
             // Filter data for the "man" model
