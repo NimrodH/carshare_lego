@@ -40,13 +40,19 @@ class Avatar {
     /// Create a lego avatar from the "man" model data
     async createLegoAvatar(scene) {
         try {
-            // Use the CORS gateway from index.html: t8l4i3853e.execute-api.us-east-1.amazonaws.com/V1/
-            // The route is the full model API URL, queryParam is the formatted query string
-            const modelRoute = 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
-            const queryParam = '?myStep=ALL';
+            // Use the getData function from lego_index.html which takes URL and data object
+            // This function automatically constructs the query string: url?key=value&key2=value2
+            const modelURL = 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
             
-            // Call getData with route and queryParam separately (following index.html pattern)
-            let modelDataObj = await getData(modelRoute, queryParam);
+            // Call getData with URL and data object (following lego_index.html pattern)
+            let modelDataObj = await getData(modelURL, { 'myStep': 'ALL' });
+            
+            // Handle error if getData returns empty object
+            if (!modelDataObj || !modelDataObj.Items) {
+                console.warn("No model data returned from database");
+                return null;
+            }
+            
             let allModelData = modelDataObj.Items;
             
             // Filter data for the "man" model
