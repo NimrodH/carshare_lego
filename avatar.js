@@ -230,10 +230,15 @@ class Avatar {
                 if (!destSphere) continue;
                 
                 // Calculate connection position
-                const matrix_sc = srcConnectionName;
+                // Note: our blocks are created fresh (not cloned like in lego1.js),
+                // so their contact sphere names are already plain ("p-0.5", "p2", ...)
+                // with no block-name prefix. Do NOT run fullName2Private() on them again -
+                // that incorrectly truncates names whose position contains a decimal
+                // point (e.g. "p-0.5" would be cut down to "5" at the embedded dot),
+                // which was silently breaking every half-integer connection.
                 let newElementChildren = newElement.getChildren();
                 let newElementConnection = newElementChildren.find(child => 
-                    this.fullName2Private(child.name) === srcConnectionName
+                    child.name === srcConnectionName
                 );
                 
                 if (!newElementConnection) continue;
