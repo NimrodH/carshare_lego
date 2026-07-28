@@ -78,7 +78,7 @@ class Avatar {
             
             // Create a base model for the avatar
             // Use a unique container mesh that won't be added to modelsArray
-            let avatarContainer = meshBlock(scene, 1);
+            let avatarContainer = window.meshBlock(scene, 1);
             avatarContainer.metadata = {
                 inModel: true,
                 blockNum: 0,
@@ -100,17 +100,17 @@ class Avatar {
                 let srcConnectionName = this.fullName2Private(element.srcPoint);
                 
                 // Create new block from menu
-                let menuBlock = elementsMenu.getChildMeshes(false, node => node.name == srcBlockName)[0];
+                let menuBlock = window.elementsMenu.getChildMeshes(false, node => node.name == srcBlockName)[0];
                 if (!menuBlock) continue;
                 
                 let newElement = menuBlock.clone(menuBlock.name);
                 
                 // Set orientation
-                let newRotation = rotationName2Vector(element.rotation);
+                let newRotation = window.rotationName2Vector(element.rotation);
                 newElement.rotation = newRotation;
                 
                 // Set color
-                let newColor = colorName2Vector(element.color);
+                let newColor = window.colorName2Vector(element.color);
                 
                 // Connect to avatar model
                 const destBlockNum = element.destBlock;
@@ -158,7 +158,7 @@ class Avatar {
             }
             
             // Position avatar at ground level
-            setOnGround(avatarContainer, 1);
+            window.setOnGround(avatarContainer, 1);
             
             this.avatarMesh = avatarContainer;
             return avatarContainer;
