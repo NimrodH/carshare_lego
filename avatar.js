@@ -185,9 +185,10 @@ class Avatar {
                 isAvatarModel: true
             };
             
-            // Rebuild the avatar model from stored data
-            // Build blocks up to a reasonable maximum for the avatar
-            const maxBlocks = Math.min(manModelData.length, 12); // Limit avatar complexity
+            // Rebuild the avatar model from stored data.
+            // Build ALL stored steps so the avatar shows the complete "man" model
+            // (matches reBuildModel() in lego1.js: for index = 1 to modelData.length).
+            const maxBlocks = manModelData.length + 1;
             
             for (let index = 1; index < maxBlocks; index++) {
                 const element = manModelData.filter(el => el.step == index)[0];
@@ -218,8 +219,12 @@ class Avatar {
                 let newColor = legoColorName2Vector(element.color);
                 
                 // Connect to avatar model
+                // destPoint is stored with a block-name prefix (e.g. "b5.p2"),
+                // but the sphere itself is just named "p2" - strip the prefix
+                // the same way srcPoint is handled, otherwise every step except
+                // the one connecting to the base block (destBlock 0) fails to match.
                 const destBlockNum = element.destBlock;
-                const destPointName = element.destPoint;
+                const destPointName = this.fullName2Private(element.destPoint);
                 
                 let destSphere = this.getDestinationSphere(avatarContainer, destBlockNum, destPointName);
                 if (!destSphere) continue;
