@@ -78,7 +78,15 @@ class Avatar {
             
             // Create a base model for the avatar
             // Use a unique container mesh that won't be added to modelsArray
-            let avatarContainer = window.meshBlock(scene, 1);
+            
+            // Get meshBlock function - it should be global from lego1.js
+            if (typeof meshBlock === 'undefined' && typeof window.meshBlock === 'undefined') {
+                console.error("meshBlock function not found. Make sure lego1.js is loaded before avatar.js");
+                return null;
+            }
+            
+            let meshBlockFn = typeof meshBlock !== 'undefined' ? meshBlock : window.meshBlock;
+            let avatarContainer = meshBlockFn(scene, 1);
             avatarContainer.metadata = {
                 inModel: true,
                 blockNum: 0,
@@ -100,17 +108,20 @@ class Avatar {
                 let srcConnectionName = this.fullName2Private(element.srcPoint);
                 
                 // Create new block from menu
-                let menuBlock = window.elementsMenu.getChildMeshes(false, node => node.name == srcBlockName)[0];
+                let elementsMenuGlobal = typeof elementsMenu !== 'undefined' ? elementsMenu : window.elementsMenu;
+                let menuBlock = elementsMenuGlobal.getChildMeshes(false, node => node.name == srcBlockName)[0];
                 if (!menuBlock) continue;
                 
                 let newElement = menuBlock.clone(menuBlock.name);
                 
-                // Set orientation
-                let newRotation = window.rotationName2Vector(element.rotation);
+                // Set orientation - use global rotation function
+                let rotationFn = typeof rotationName2Vector !== 'undefined' ? rotationName2Vector : window.rotationName2Vector;
+                let newRotation = rotationFn(element.rotation);
                 newElement.rotation = newRotation;
                 
-                // Set color
-                let newColor = window.colorName2Vector(element.color);
+                // Set color - use global color function
+                let colorFn = typeof colorName2Vector !== 'undefined' ? colorName2Vector : window.colorName2Vector;
+                let newColor = colorFn(element.color);
                 
                 // Connect to avatar model
                 const destBlockNum = element.destBlock;
@@ -157,8 +168,9 @@ class Avatar {
                 };
             }
             
-            // Position avatar at ground level
-            window.setOnGround(avatarContainer, 1);
+            // Position avatar at ground level - use global setOnGround function
+            let setOnGroundFn = typeof setOnGround !== 'undefined' ? setOnGround : window.setOnGround;
+            setOnGroundFn(avatarContainer, 1);
             
             this.avatarMesh = avatarContainer;
             return avatarContainer;
