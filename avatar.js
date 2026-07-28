@@ -40,11 +40,14 @@ class Avatar {
     /// Create a lego avatar from the "man" model data
     async createLegoAvatar(scene) {
         try {
-            // Access tableURL from global scope (defined in lego1.js)
-            const url = typeof tableURL !== 'undefined' ? tableURL : 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
+            // Get the table URL - use global tableURL from lego1.js if available
+            const modelURL = typeof window.tableURL !== 'undefined' 
+                ? window.tableURL 
+                : 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
             
-            // Load the training model data from database
-            let modelDataObj = await getData(url, { 'myStep': 'ALL' });
+            // Use getData function from lego_index.html to fetch model data
+            // Same pattern as used in lego1.js: getData(tableURL, { 'myStep': 'ALL' })
+            let modelDataObj = await getData(modelURL, { 'myStep': 'ALL' });
             let allModelData = modelDataObj.Items;
             
             // Filter data for the "man" model
