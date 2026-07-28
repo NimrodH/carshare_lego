@@ -37,15 +37,28 @@ class Avatar {
         this.frontSign = new AvatarMessage(planeSize, signX, signY, signZ, signData, this)
     }
 
+    /// Helper function to fetch data directly (using lego_index.html pattern, not the gateway)
+    async getModelData(url, data = {}) {
+        try {
+            const fullURL = url + '?' + new URLSearchParams(data);
+            console.log("Fetching from:", fullURL);
+            const response = await fetch(fullURL);
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching model data:", error);
+            return null;
+        }
+    }
+
     /// Create a lego avatar from the "man" model data
     async createLegoAvatar(scene) {
         try {
-            // Use the getData function from lego_index.html which takes URL and data object
-            // This function automatically constructs the query string: url?key=value&key2=value2
+            // Use direct fetch to model database (same pattern as lego1.js)
+            // Do NOT use the gateway - call the API directly
             const modelURL = 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
             
-            // Call getData with URL and data object (following lego_index.html pattern)
-            let modelDataObj = await getData(modelURL, { 'myStep': 'ALL' });
+            // Call direct getData with URL and data object
+            let modelDataObj = await this.getModelData(modelURL, { 'myStep': 'ALL' });
             
             // Handle error if getData returns empty object
             if (!modelDataObj || !modelDataObj.Items) {
