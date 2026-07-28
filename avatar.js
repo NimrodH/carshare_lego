@@ -1,5 +1,102 @@
 
 
+///////////////// SELF-CONTAINED LEGO BUILDING HELPERS (for avatarType A) /////////////////
+/// index.html does not load lego1.js, so avatar.js cannot rely on its global
+/// functions/variables (meshBlock, elementsMenu, menuY, colorName2Vector, ...).
+/// These local equivalents mirror the geometry/colors/rotations from lego1.js
+/// so avatars built from stored model data (created in the lego app) match exactly.
+
+const legoBaseColor = new BABYLON.Color3(0.54, 0.13, 0.54);
+const legoNotSelectedColor = new BABYLON.Color3(1, 0, 1);
+const legoBlueColor = new BABYLON.Color3(0, 0, 1);
+const legoRedColor = new BABYLON.Color3(1, 0, 0);
+const legoBlackColor = new BABYLON.Color3(0, 0, 0);
+const legoGreenColor = new BABYLON.Color3(0, 1, 0);
+const legoRotationO = new BABYLON.Vector3(0, 0, 0);
+const legoRotationX = new BABYLON.Vector3(1.5708, 0, 0);
+const legoRotationY = new BABYLON.Vector3(0, 1.5708, 0);
+const legoRotationZ = new BABYLON.Vector3(0, 0, 1.5708);
+
+const legoColorsObj = [
+    { colorName: "blue", colorVector: legoBlueColor },
+    { colorName: "base", colorVector: legoBaseColor },
+    { colorName: "red", colorVector: legoRedColor },
+    { colorName: "green", colorVector: legoGreenColor },
+    { colorName: "black", colorVector: legoBlackColor },
+    { colorName: "notSelected", colorVector: legoNotSelectedColor }
+];
+
+function legoColorName2Vector(theColorName) {
+    const found = legoColorsObj.filter(c => c.colorName == theColorName)[0];
+    return found ? found.colorVector : legoBaseColor;
+}
+
+function legoRotationName2Vector(theName) {
+    switch (theName) {
+        case "X": return legoRotationX;
+        case "Y": return legoRotationY;
+        case "Z": return legoRotationZ;
+        default: return legoRotationO;
+    }
+}
+
+/// Add a connection sphere to a block/wheel, matching lego1.js naming ("p" + position)
+function legoAddContactSphere(meshParent, meshPosition, scene) {
+    let tempSphere = BABYLON.MeshBuilder.CreateSphere("p" + meshPosition, { diameter: 1.2 }, scene);
+    tempSphere.parent = meshParent;
+    tempSphere.position.x = meshPosition;
+    const myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
+    myMaterial.diffuseColor = legoNotSelectedColor;
+    tempSphere.material = myMaterial;
+    return tempSphere;
+}
+
+/// Create a rectangular block, matching lego1.js meshBlock() geometry/connection points
+function legoMeshBlock(scene, blockWidth) {
+    const box = BABYLON.MeshBuilder.CreateBox("b" + blockWidth, { width: blockWidth, height: 1 }, scene);
+    const myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
+    myMaterial.diffuseColor = legoBaseColor;
+    box.material = myMaterial;
+    const blockWidthFloor = Math.floor(blockWidth / 2);
+    if (blockWidthFloor == blockWidth / 2) {
+        for (let index = 0; index < blockWidthFloor; index++) {
+            legoAddContactSphere(box, index - 0.5, scene);
+            legoAddContactSphere(box, index + 0.5, scene);
+        }
+    } else {
+        for (let index = 0; index < blockWidthFloor + 1; index++) {
+            legoAddContactSphere(box, index, scene);
+            if (index !== 0) {
+                legoAddContactSphere(box, -index, scene);
+            }
+        }
+    }
+    return box;
+}
+
+/// Create a round element (wheel), matching lego1.js meshWheel() geometry
+function legoMeshWheel(scene, wheelWidth) {
+    const wheel = BABYLON.MeshBuilder.CreateCylinder("c" + wheelWidth, { height: 1, diameter: 2 }, scene);
+    const myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
+    myMaterial.diffuseColor = legoBaseColor;
+    wheel.material = myMaterial;
+    wheel.rotation = legoRotationX;
+    legoAddContactSphere(wheel, 0, scene);
+    wheel.position.y = 1;
+    return wheel;
+}
+
+/// Raise the whole hierarchy so its lowest point sits on y = 0
+function legoSetOnGround(element) {
+    element.refreshBoundingInfo();
+    element.computeWorldMatrix(true);
+    const boundingInfo = element.getHierarchyBoundingVectors();
+    const lowerEdgePosition = boundingInfo.min.y;
+    if (lowerEdgePosition != 0) {
+        element.position.y = element.position.y - lowerEdgePosition;
+    }
+}
+
 class Avatar {
     constructor(avatarData, world, avatarType) {
         this.myWorld = world;
@@ -50,33 +147,9 @@ class Avatar {
         }
     }
 
-    /// Helper to wait for global functions to be available from lego1.js
-    async waitForGlobalFunctions(maxWaitMs = 5000) {
-        const startTime = Date.now();
-        while (Date.now() - startTime < maxWaitMs) {
-            if (typeof meshBlock !== 'undefined' && 
-                typeof rotationName2Vector !== 'undefined' && 
-                typeof colorName2Vector !== 'undefined' && 
-                typeof setOnGround !== 'undefined') {
-                return true;
-            }
-            // Wait 100ms and try again
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        console.error("Timeout waiting for global functions from lego1.js");
-        return false;
-    }
-
     /// Create a lego avatar from the "man" model data
     async createLegoAvatar(scene) {
         try {
-            // Wait for required global functions from lego1.js to be available
-            const functionsReady = await this.waitForGlobalFunctions();
-            if (!functionsReady) {
-                console.error("Required global functions not available. Make sure lego1.js is loaded before avatar.js");
-                return null;
-            }
-            
             // Use direct fetch to model database (same pattern as lego1.js)
             // Do NOT use the gateway - call the API directly
             const modelURL = 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
@@ -100,9 +173,9 @@ class Avatar {
                 return null;
             }
             
-            // Create a base model for the avatar
-            // Use a unique container mesh that won't be added to modelsArray
-            let avatarContainer = meshBlock(scene, 1);
+            // Create a base model for the avatar using self-contained lego helpers
+            // (index.html does not load lego1.js, so we cannot rely on its globals)
+            let avatarContainer = legoMeshBlock(scene, 1);
             avatarContainer.metadata = {
                 inModel: true,
                 blockNum: 0,
@@ -123,26 +196,26 @@ class Avatar {
                 let srcBlockName = element.type;
                 let srcConnectionName = this.fullName2Private(element.srcPoint);
                 
-                // Create new block directly using meshBlock function
+                // Create new block directly using self-contained lego helpers
                 // Parse the block name to get the width (e.g., "b5" -> 5, "c1" -> wheel)
                 let newElement;
                 if (srcBlockName.startsWith('c')) {
                     // It's a wheel/cylinder
-                    newElement = window.meshWheel ? window.meshWheel(scene, 1) : meshWheel(scene, 1);
+                    newElement = legoMeshWheel(scene, 1);
                 } else {
                     // It's a block - extract the width from the name (e.g., "b5" -> 5)
                     let blockWidth = parseInt(srcBlockName.substring(1)) || 1;
-                    newElement = meshBlock(scene, blockWidth);
+                    newElement = legoMeshBlock(scene, blockWidth);
                 }
                 
                 if (!newElement) continue;
                 
-                // Set orientation - use global rotation function
-                let newRotation = rotationName2Vector(element.rotation);
+                // Set orientation
+                let newRotation = legoRotationName2Vector(element.rotation);
                 newElement.rotation = newRotation;
                 
-                // Set color - use global color function
-                let newColor = colorName2Vector(element.color);
+                // Set color
+                let newColor = legoColorName2Vector(element.color);
                 
                 // Connect to avatar model
                 const destBlockNum = element.destBlock;
@@ -189,8 +262,8 @@ class Avatar {
                 };
             }
             
-            // Position avatar at ground level - use global setOnGround function
-            setOnGround(avatarContainer, 1);
+            // Position avatar at ground level - use self-contained helper
+            legoSetOnGround(avatarContainer);
             
             this.avatarMesh = avatarContainer;
             return avatarContainer;
