@@ -50,9 +50,34 @@ class Avatar {
         }
     }
 
+    /// Helper to wait for global functions to be available from lego1.js
+    async waitForGlobalFunctions(maxWaitMs = 5000) {
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWaitMs) {
+            if (typeof meshBlock !== 'undefined' && 
+                typeof elementsMenu !== 'undefined' && 
+                typeof rotationName2Vector !== 'undefined' && 
+                typeof colorName2Vector !== 'undefined' && 
+                typeof setOnGround !== 'undefined') {
+                return true;
+            }
+            // Wait 100ms and try again
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.error("Timeout waiting for global functions from lego1.js");
+        return false;
+    }
+
     /// Create a lego avatar from the "man" model data
     async createLegoAvatar(scene) {
         try {
+            // Wait for required global functions from lego1.js to be available
+            const functionsReady = await this.waitForGlobalFunctions();
+            if (!functionsReady) {
+                console.error("Required global functions not available. Make sure lego1.js is loaded before avatar.js");
+                return null;
+            }
+            
             // Use direct fetch to model database (same pattern as lego1.js)
             // Do NOT use the gateway - call the API directly
             const modelURL = 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
@@ -78,15 +103,7 @@ class Avatar {
             
             // Create a base model for the avatar
             // Use a unique container mesh that won't be added to modelsArray
-            
-            // Get meshBlock function - it should be global from lego1.js
-            if (typeof meshBlock === 'undefined' && typeof window.meshBlock === 'undefined') {
-                console.error("meshBlock function not found. Make sure lego1.js is loaded before avatar.js");
-                return null;
-            }
-            
-            let meshBlockFn = typeof meshBlock !== 'undefined' ? meshBlock : window.meshBlock;
-            let avatarContainer = meshBlockFn(scene, 1);
+            let avatarContainer = meshBlock(scene, 1);
             avatarContainer.metadata = {
                 inModel: true,
                 blockNum: 0,
@@ -108,20 +125,18 @@ class Avatar {
                 let srcConnectionName = this.fullName2Private(element.srcPoint);
                 
                 // Create new block from menu
-                let elementsMenuGlobal = typeof elementsMenu !== 'undefined' ? elementsMenu : window.elementsMenu;
+                let elementsMenuGlobal = elementsMenu;
                 let menuBlock = elementsMenuGlobal.getChildMeshes(false, node => node.name == srcBlockName)[0];
                 if (!menuBlock) continue;
                 
                 let newElement = menuBlock.clone(menuBlock.name);
                 
                 // Set orientation - use global rotation function
-                let rotationFn = typeof rotationName2Vector !== 'undefined' ? rotationName2Vector : window.rotationName2Vector;
-                let newRotation = rotationFn(element.rotation);
+                let newRotation = rotationName2Vector(element.rotation);
                 newElement.rotation = newRotation;
                 
                 // Set color - use global color function
-                let colorFn = typeof colorName2Vector !== 'undefined' ? colorName2Vector : window.colorName2Vector;
-                let newColor = colorFn(element.color);
+                let newColor = colorName2Vector(element.color);
                 
                 // Connect to avatar model
                 const destBlockNum = element.destBlock;
@@ -169,8 +184,7 @@ class Avatar {
             }
             
             // Position avatar at ground level - use global setOnGround function
-            let setOnGroundFn = typeof setOnGround !== 'undefined' ? setOnGround : window.setOnGround;
-            setOnGroundFn(avatarContainer, 1);
+            setOnGround(avatarContainer, 1);
             
             this.avatarMesh = avatarContainer;
             return avatarContainer;
