@@ -394,8 +394,9 @@ class Avatar {
             this.avatarMesh.position = new BABYLON.Vector3(data.x, data.y, data.z);
             
             // Scale lego avatars down to more reasonable avatar size
+            // (reduced by a further 30% from the previous 0.3 scale)
             if (this.avatarType === "A") {
-                this.avatarMesh.scaling = new BABYLON.Vector3(0.3, 0.3, 0.3);
+                this.avatarMesh.scaling = new BABYLON.Vector3(0.21, 0.21, 0.21);
             }
             
             this.avatarMesh.lookAt(new BABYLON.Vector3(data.targetX, data.targetY, data.targetZ));
