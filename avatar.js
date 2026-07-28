@@ -124,9 +124,17 @@ class Avatar {
 
     async matchUser(signData) {
         const planeSize = 0.85;
-        const signX = 0;
-        const signY = 0.55;
-        const signZ = 0.18;
+        let signX = 0;
+        let signY = 0.55;
+        let signZ = 0.18;
+
+        // Non-"A" avatars (the GLB models) used to show their sign in front of
+        // the chest. Float it above their head instead.
+        if (this.avatarType !== "A") {
+            signY = (this.avatarHeadTopY || 1.8) + 0.3;
+            signZ = 0;
+        }
+
         this.userData = signData; ///The data related to the user (the one who own the avatar)
         //console.log("avatarMesh:", this.avatarMesh);
         
@@ -384,6 +392,13 @@ class Avatar {
         ///moved to allow implement on all avatars
         console.log("avatarType:", this.avatarType);
 
+        // Remember how tall this GLB avatar is (top of the head) while it still
+        // sits at its default local transform, so matchUser() can float the
+        // sign above the head instead of guessing a fixed height.
+        this.avatarMesh.computeWorldMatrix(true);
+        const headBounds = this.avatarMesh.getHierarchyBoundingVectors(true);
+        this.avatarHeadTopY = headBounds.max.y;
+
     }
     ///place the avatar in the world
     placeAvatar() {
@@ -394,9 +409,8 @@ class Avatar {
             this.avatarMesh.position = new BABYLON.Vector3(data.x, data.y, data.z);
             
             // Scale lego avatars down to more reasonable avatar size
-            // (reduced by a further 30% from the previous 0.3 scale)
             if (this.avatarType === "A") {
-                this.avatarMesh.scaling = new BABYLON.Vector3(0.21, 0.21, 0.21);
+                this.avatarMesh.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
             }
             
             this.avatarMesh.lookAt(new BABYLON.Vector3(data.targetX, data.targetY, data.targetZ));
