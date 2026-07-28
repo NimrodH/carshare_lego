@@ -55,7 +55,6 @@ class Avatar {
         const startTime = Date.now();
         while (Date.now() - startTime < maxWaitMs) {
             if (typeof meshBlock !== 'undefined' && 
-                typeof elementsMenu !== 'undefined' && 
                 typeof rotationName2Vector !== 'undefined' && 
                 typeof colorName2Vector !== 'undefined' && 
                 typeof setOnGround !== 'undefined') {
@@ -124,12 +123,19 @@ class Avatar {
                 let srcBlockName = element.type;
                 let srcConnectionName = this.fullName2Private(element.srcPoint);
                 
-                // Create new block from menu
-                let elementsMenuGlobal = elementsMenu;
-                let menuBlock = elementsMenuGlobal.getChildMeshes(false, node => node.name == srcBlockName)[0];
-                if (!menuBlock) continue;
+                // Create new block directly using meshBlock function
+                // Parse the block name to get the width (e.g., "b5" -> 5, "c1" -> wheel)
+                let newElement;
+                if (srcBlockName.startsWith('c')) {
+                    // It's a wheel/cylinder
+                    newElement = window.meshWheel ? window.meshWheel(scene, 1) : meshWheel(scene, 1);
+                } else {
+                    // It's a block - extract the width from the name (e.g., "b5" -> 5)
+                    let blockWidth = parseInt(srcBlockName.substring(1)) || 1;
+                    newElement = meshBlock(scene, blockWidth);
+                }
                 
-                let newElement = menuBlock.clone(menuBlock.name);
+                if (!newElement) continue;
                 
                 // Set orientation - use global rotation function
                 let newRotation = rotationName2Vector(element.rotation);
