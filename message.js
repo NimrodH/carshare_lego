@@ -25,6 +25,19 @@ class AvatarMessage {
 
         this.plane.setParent(this.myAvatar.avatarMesh);
 
+        // The plane is now parented directly to the avatar mesh, so it inherits
+        // the avatar's own scaling (e.g. 0.1 for lego-built type "A" avatars).
+        // Counteract that here so the sign always renders at the same physical
+        // size, regardless of how small/large the avatar itself is scaled.
+        const avatarScaling = this.myAvatar.avatarMesh && this.myAvatar.avatarMesh.scaling;
+        if (avatarScaling) {
+            this.plane.scaling = new BABYLON.Vector3(
+                1 / (avatarScaling.x || 1),
+                1 / (avatarScaling.y || 1),
+                1 / (avatarScaling.z || 1)
+            );
+        }
+
         this.advancedTexture.background = 'green'
 
 
