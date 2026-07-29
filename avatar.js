@@ -128,10 +128,22 @@ class Avatar {
         let signY = 0.55;
         let signZ = 0.18;
 
-        // All avatars (GLB models and lego-built type "A" avatars) float their
-        // sign above the head/top of the model instead of in front of the chest.
-        signY = (this.avatarHeadTopY || 1.8) + 0.3;
-        signZ = 0;
+        if (this.avatarType === "A") {
+            // Place the sign so its LOWER edge sits right above the top of the
+            // lego avatar. The sign's plane is scaled up by 1/avatarScaling
+            // (see AvatarMessage) to counteract the avatar's own scaling, so its
+            // world-space half-height is always planeSize/2 - but this position
+            // offset is still expressed in the avatar's own (scaled-down) local
+            // units, so we divide that half-height back into the local frame.
+            const avatarScaleY = (this.avatarMesh && this.avatarMesh.scaling && this.avatarMesh.scaling.y) || 1;
+            const topY = this.avatarHeadTopY || 0;
+            signY = topY + (planeSize / 2) / avatarScaleY;
+            signZ = 0;
+        } else {
+            // Non-"A" avatars float their sign above the head with a small gap.
+            signY = (this.avatarHeadTopY || 1.8) + 0.3;
+            signZ = 0;
+        }
 
         this.userData = signData; ///The data related to the user (the one who own the avatar)
         //console.log("avatarMesh:", this.avatarMesh);
