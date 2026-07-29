@@ -128,12 +128,10 @@ class Avatar {
         let signY = 0.55;
         let signZ = 0.18;
 
-        // Non-"A" avatars (the GLB models) used to show their sign in front of
-        // the chest. Float it above their head instead.
-        if (this.avatarType !== "A") {
-            signY = (this.avatarHeadTopY || 1.8) + 0.3;
-            signZ = 0;
-        }
+        // All avatars (GLB models and lego-built type "A" avatars) float their
+        // sign above the head/top of the model instead of in front of the chest.
+        signY = (this.avatarHeadTopY || 1.8) + 0.3;
+        signZ = 0;
 
         this.userData = signData; ///The data related to the user (the one who own the avatar)
         //console.log("avatarMesh:", this.avatarMesh);
@@ -282,6 +280,13 @@ class Avatar {
             
             // Position avatar at ground level - use self-contained helper
             legoSetOnGround(avatarContainer);
+            
+            // Remember how tall this lego model is (in its own unscaled local
+            // units, before placeAvatar() applies the 0.1 avatar scaling), so
+            // matchUser() can float the sign above it.
+            avatarContainer.computeWorldMatrix(true);
+            const legoBounds = avatarContainer.getHierarchyBoundingVectors(true);
+            this.avatarHeadTopY = legoBounds.max.y;
             
             this.avatarMesh = avatarContainer;
             return avatarContainer;
