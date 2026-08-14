@@ -404,6 +404,7 @@ class Avatar {
             return null;
         }
         this.avatarMesh = root;
+        this.importResult = result; ///kept for poseManager.js (rig transform nodes for posing)
         //this.avatarMesh.scaling = new BABYLON.Vector3(1, 1, 1);
         ///return root;
         ///moved to allow implement on all avatars
@@ -416,6 +417,11 @@ class Avatar {
         const headBounds = this.avatarMesh.getHierarchyBoundingVectors(true);
         this.avatarHeadTopY = headBounds.max.y;
 
+        // Posing only applies to rigged GLB avatars, never lego (type "A") avatars, which return earlier above.
+        const avatarId = this.avatarData.id;
+        if (AVATAR_POSES[avatarId] && AVATAR_POSES[avatarId].neutral) {
+            applyPose(this.importResult, avatarId, "neutral");
+        }
     }
     ///place the avatar in the world
     placeAvatar() {
