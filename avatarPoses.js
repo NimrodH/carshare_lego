@@ -1,7 +1,7 @@
 // Loaded as a plain (non-module) script, so AVATAR_POSES is exposed as a global.
 const AVATAR_POSES = {
     avatar1: {
-        neutral: {
+        handRaised: {
             id: "neutral",
             label: "Neutral pose",
 
@@ -26,7 +26,7 @@ const AVATAR_POSES = {
             }
         },
 
-        handRaised: {
+        neutral: {
             id: "handRaised",
             label: "Left hand raised",
 
