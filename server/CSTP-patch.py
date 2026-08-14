@@ -35,7 +35,7 @@ def _resp(status, payload, with_cors=False):
     headers = {"Content-Type": "application/json"}
     if with_cors:
         headers.update({
-            "Access-Control-Allow-Origin": "https://nimrodh.github.io",
+            "Access-Control-Allow-Origin": CORS_ORIGIN,
             "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key",
             "Access-Control-Allow-Methods": "GET,POST,OPTIONS,PATCH"
         })
@@ -48,15 +48,15 @@ def _resp(status, payload, with_cors=False):
 def lambda_handler(event, context):
     method = (event.get("requestContext", {}).get("http", {}) or {}).get("method", "PATCH")
     if method == "OPTIONS":
-        return _resp(200, {"ok": True})
+        return _resp(200, {"ok": True}, with_cors=True)
     avatar_id = (event.get("pathParameters") or {}).get("proxy") or (event.get("pathParameters") or {}).get("avatarID")
     if not avatar_id:
-        return _resp(400, {"error": "avatarID path parameter missing"})
+        return _resp(400, {"error": "avatarID path parameter missing"}, with_cors=True)
     body = _parse_body(event)
     field = body.get("field")
     value = body.get("value")
     if not field:
-        return _resp(400, {"error": "field is required"})
+        return _resp(400, {"error": "field is required"}, with_cors=True)
 
     table = signs if field == "isLoading" else avatars
     update_expr = "SET #f = :v, updatedAt = :u"
@@ -78,6 +78,6 @@ def lambda_handler(event, context):
                 ExpressionAttributeNames={"#s": "status"},
                 ExpressionAttributeValues={":no": "noChat", ":u": int(time.time()*1000)}
             )        
-        return _resp(200, {"message": "Avatar updated successfully", "updated": resp.get("Attributes")})
+        return _resp(200, {"message": "Avatar updated successfully", "updated": resp.get("Attributes")}, with_cors=True)
     except ClientError as e:
-        return _resp(500, {"error": e.response['Error']['Message']})
+        return _resp(500, {"error": e.response['Error']['Message']}, with_cors=True)

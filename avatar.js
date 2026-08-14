@@ -100,13 +100,13 @@ function legoSetOnGround(element) {
 class Avatar {
     constructor(avatarData, world, avatarType) {
         this.myWorld = world;
-        this.avatarData = avatarData; ///The data related to the avatar (differ then the user own it) see avatarsDataArray
+        this.avatarData = avatarData; ///The data related to the avatar (differ then the user own it) see avatarRegistry.js
         this.userData = {};///will be filled with data from signdata including name and avatarID (see debugUsersArray)
         this.statusData = {}; ///will be updated with the status of the avatar (noChat, myChat, inChat...)
         this.avatarMesh = null; ///the mesh of the avatar
         this.frontSign = null; ///the sign in front of the avatar (AvatarMessage)
         this.alreadyTalked = false;
-        this.avatarType = avatarType; ///the type of the avatar (A for unSeen avatar)
+        this.avatarType = avatarType; ///the type of the avatar (A for lego avatar)
 
         //console.log("Avatar ID: " + this.ID);
     }

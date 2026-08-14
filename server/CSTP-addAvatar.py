@@ -35,7 +35,7 @@ def _resp(status, payload, with_cors=False):
     headers = {"Content-Type": "application/json"}
     if with_cors:
         headers.update({
-            "Access-Control-Allow-Origin": "https://nimrodh.github.io",
+            "Access-Control-Allow-Origin": CORS_ORIGIN,
             "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key",
             "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
         })
@@ -48,15 +48,15 @@ def _resp(status, payload, with_cors=False):
 def lambda_handler(event, context):
     method = (event.get("requestContext", {}).get("http", {}) or {}).get("method", "POST")
     if method == "OPTIONS":
-        return _resp(200, {"ok": True})
+        return _resp(200, {"ok": True}, with_cors=True)
     if method != "POST":
-        return _resp(405, {"error": "Method not allowed"})
+        return _resp(405, {"error": "Method not allowed"}, with_cors=True)
 
     payload = _parse_body(event)
     # Required
     avatar_id = payload.get("avatarID")
     if not avatar_id:
-        return _resp(400, {"error": "avatarID is required"})
+        return _resp(400, {"error": "avatarID is required"}, with_cors=True)
 
     # Defaults
     is_loading = bool(payload.get("isLoading", True))
@@ -89,6 +89,6 @@ def lambda_handler(event, context):
         avatars.put_item(Item=avatar_item)
         signs.put_item(Item=sign_item)
     except ClientError as e:
-        return _resp(500, {"error": f"DynamoDB error: {e.response['Error']['Message']}"})
+        return _resp(500, {"error": f"DynamoDB error: {e.response['Error']['Message']}"}, with_cors=True)
 
-    return _resp(201, {"message": "Avatar created", "avatarID": avatar_id})
+    return _resp(201, {"message": "Avatar created", "avatarID": avatar_id}, with_cors=True)

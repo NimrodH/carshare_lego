@@ -68,8 +68,9 @@ class World {
 
         // Create avatars (meshes)
         let i = 1;
-        for (const avatarData of avatarsDataArray) {
-            this.msg.updateIterationText(`${i++} / ${avatarsDataArray.length}`);
+        const avatarDefinitions = getAllAvatarDefinitions();
+        for (const avatarData of avatarDefinitions) {
+            this.msg.updateIterationText(`${i++} / ${avatarDefinitions.length}`);
             const avatar = new Avatar(avatarData, this, signData.avatarID[0]);
             await avatar.createAvatarMesh(this.scene);
             await avatar.placeAvatar();
