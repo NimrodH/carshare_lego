@@ -43,6 +43,11 @@ class World {
 
     // ---------- WELCOME FLOW ----------
     async wellcomeDone(signData) {
+        if (signData.avatarID === "LAT") {
+            await this.wellcomeDoneLocalTest(signData);
+            return;
+        }
+
         console.log("[WORLD] Welcome started");
         let loadingMessage;
         if (signData.avatarID[0] !== "A") { //can be C
@@ -109,6 +114,32 @@ class World {
         console.log("[WORLD] wellcomeDone: after first periodicUpdate");
         this.startPeriodicUpdate();
         console.log("[WORLD] Welcome complete");
+    }
+
+    // ---------- LOCAL AVATAR TEST (ID "LAT") ----------
+    // Loads every avatar slot from the local GLB files only, arranged in the
+    // usual circle, posed per avatarPoses.js - no server calls, no chat/status
+    // functionality at all (no postData/getData/periodicUpdate).
+    async wellcomeDoneLocalTest(signData) {
+        console.log("[WORLD] LAT local avatar test started - no server communication");
+        this.msg = new MessageScreen(this, "טוען אווטרים מקומית (בדיקה - ללא שרת)", "info");
+
+        let i = 1;
+        const avatarDefinitions = getAllAvatarDefinitions();
+        for (const avatarData of avatarDefinitions) {
+            this.msg.updateIterationText(`${i++} / ${avatarDefinitions.length}`);
+            const avatar = new Avatar(avatarData, this, signData.avatarID[0]);
+            await avatar.createAvatarMesh(this.scene);
+            await avatar.placeAvatar();
+            this._avatarsArr.push(avatar);
+        }
+
+        this.msg.clearInstance();
+        this.msg = null;
+        // No signs are ever matched in this mode, so there is nothing to chat with even
+        // though allowPointer is true - it's only needed to keep mouse-click camera rotation/zoom working.
+        this.allowPointer = true;
+        console.log("[WORLD] LAT local avatar test complete");
     }
 
     // ---------- PERIODIC UPDATE ----------
