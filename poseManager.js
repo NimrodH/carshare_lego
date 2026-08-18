@@ -19,7 +19,9 @@ function getAvatarPose(
     }
 
     const pose =
-        avatarPoses[poseId];
+        avatarPoses[poseId] ||
+        (AVATAR_POSES.default &&
+            AVATAR_POSES.default[poseId]);
 
     if (!pose) {
         throw new Error(

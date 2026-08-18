@@ -1,5 +1,33 @@
 // Loaded as a plain (non-module) script, so AVATAR_POSES is exposed as a global.
 const AVATAR_POSES = {
+    // Fallback poses used when a specific avatar doesn't define a given pose id.
+    default: {
+        neutral: {
+            id: "neutral",
+            label: "Neutral pose",
+
+            rotations: {
+                leftArm: {
+                    quaternion: {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        w: 1
+                    }
+                },
+
+                leftForeArm: {
+                    quaternion: {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        w: 1
+                    }
+                }
+            }
+        }
+    },
+
     avatar1: {
         handRaised: {
             id: "neutral",
