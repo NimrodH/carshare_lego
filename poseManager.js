@@ -10,13 +10,7 @@ function getAvatarPose(
     poseId
 ) {
     const avatarPoses =
-        AVATAR_POSES[avatarId];
-
-    if (!avatarPoses) {
-        throw new Error(
-            `No poses defined for avatar "${avatarId}".`
-        );
-    }
+        AVATAR_POSES[avatarId] || {};
 
     const pose =
         avatarPoses[poseId] ||
@@ -30,6 +24,25 @@ function getAvatarPose(
     }
 
     return pose;
+}
+
+
+// ============================================================
+// HAS POSE (checks avatar-specific poses, falling back to default)
+// ============================================================
+
+function hasAvatarPose(
+    avatarId,
+    poseId
+) {
+    const avatarPoses =
+        AVATAR_POSES[avatarId] || {};
+
+    return !!(
+        avatarPoses[poseId] ||
+        (AVATAR_POSES.default &&
+            AVATAR_POSES.default[poseId])
+    );
 }
 
 

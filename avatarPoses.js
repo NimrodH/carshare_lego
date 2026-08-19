@@ -9,29 +9,41 @@ const AVATAR_POSES = {
             rotations: {
                 leftArm: {
                     quaternion: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        w: 1
+                        x: 0.51455,
+                        y: 0.136873,
+                        z: 0.017816,
+                        w: 0.846279
+                    },
+
+                    eulerDegrees: {
+                        x: 60,
+                        y: 30,
+                        z: 20
                     }
                 },
 
                 leftForeArm: {
                     quaternion: {
-                        x: 0,
-                        y: 0,
-                        z: 0,
-                        w: 1
+                        x: 0.1,
+                        y: 0.2,
+                        z: 0.05,
+                        w: 0.973
+                    },
+
+                    eulerDegrees: {
+                        x: 13.122,
+                        y: 22.393,
+                        z: 8.278
                     }
                 }
             }
-        }
+        },
     },
 
     avatar1: {
         handRaised: {
-            id: "neutral",
-            label: "Neutral pose",
+            id: "handRaised",
+            label: "Left hand raised",
 
             rotations: {
                 leftArm: {
@@ -55,8 +67,8 @@ const AVATAR_POSES = {
         },
 
         neutral: {
-            id: "handRaised",
-            label: "Left hand raised",
+            id: "neutral",
+            label: "Neutral pose",
 
             rotations: {
                 leftArm: {

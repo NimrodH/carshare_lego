@@ -419,7 +419,7 @@ class Avatar {
 
         // Posing only applies to rigged GLB avatars, never lego (type "A") avatars, which return earlier above.
         const avatarId = this.avatarData.id;
-        if (AVATAR_POSES[avatarId] && AVATAR_POSES[avatarId].neutral) {
+        if (hasAvatarPose(avatarId, "neutral")) {
             applyPose(this.importResult, avatarId, "neutral");
         }
     }
