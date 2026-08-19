@@ -251,8 +251,9 @@ class Avatar {
                 let newRotation = legoRotationName2Vector(element.rotation);
                 newElement.rotation = newRotation;
                 
-                // Set color
-                let newColor = legoColorName2Vector(element.color);
+                // Set color - type A avatars use a random color instead of the DB value
+                const legoRandomColorNames = ["blue", "red", "green", "black"];
+                let newColor = legoColorName2Vector(legoRandomColorNames[Math.floor(Math.random() * legoRandomColorNames.length)]);
                 
                 // Connect to avatar model
                 // destPoint is stored with a block-name prefix (e.g. "b5.p2"),

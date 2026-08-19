@@ -45,8 +45,9 @@ class World {
     async wellcomeDone(signData) {
         console.log("[WORLD] Welcome started");
         this.viewerAvatarID = signData.avatarID;
+        const avatarType = signData.avatarID[0].toUpperCase();
         let loadingMessage;
-        if (signData.avatarID[0] !== "A") { //can be C
+        if (avatarType !== "A") { //can be C
             loadingMessage = `המתן - טוען אווטרים
 כאשר שלט זה ייסגר חלק מהאווטרים יציגו 
 שלט עם פרטי הנסיעה המעניינים אותם
@@ -72,7 +73,7 @@ class World {
         const avatarDefinitions = getAllAvatarDefinitions();
         for (const avatarData of avatarDefinitions) {
             this.msg.updateIterationText(`${i++} / ${avatarDefinitions.length}`);
-            const avatar = new Avatar(avatarData, this, signData.avatarID[0]);
+            const avatar = new Avatar(avatarData, this, avatarType);
             await avatar.createAvatarMesh(this.scene);
             await avatar.placeAvatar();
             this._avatarsArr.push(avatar);
