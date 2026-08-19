@@ -107,6 +107,7 @@ class Avatar {
         this.frontSign = null; ///the sign in front of the avatar (AvatarMessage)
         this.alreadyTalked = false;
         this.avatarType = avatarType; ///the type of the avatar (A for lego avatar)
+        this.avatarGLBFileName = null;
 
         //console.log("Avatar ID: " + this.ID);
     }
@@ -149,7 +150,24 @@ class Avatar {
         //console.log("avatarMesh:", this.avatarMesh);
         
         // Create the avatar message sign in front of avatar
-        this.frontSign = new AvatarMessage(planeSize, signX, signY, signZ, signData, this)
+        const signMessageData = this.myWorld.viewerAvatarID === "test" && this.avatarGLBFileName
+            ? { ...signData, userName: this.avatarGLBFileName }
+            : signData;
+        if (this.frontSign) {
+            this.frontSign.advancedTexture.dispose();
+            this.frontSign.plane.dispose();
+        }
+        this.frontSign = new AvatarMessage(planeSize, signX, signY, signZ, signMessageData, this)
+    }
+
+    showGLBFileNameSign() {
+        if (!this.avatarGLBFileName || this.frontSign) return;
+
+        const signY = (this.avatarHeadTopY || 1.8) + 0.3;
+        this.frontSign = new AvatarMessage(0.85, 0, signY, 0, {
+            userName: this.avatarGLBFileName,
+            isLoading: false
+        }, this);
     }
 
     /// Helper function to fetch data directly (using lego_index.html pattern, not the gateway)
@@ -377,6 +395,7 @@ class Avatar {
                 this.avatarData.loadedIsMan = true;
             }
         }
+        this.avatarGLBFileName = avatarURL.split("/").pop();
         let result;
         try {
             result = await BABYLON.SceneLoader.ImportMeshAsync(

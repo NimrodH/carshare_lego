@@ -37,6 +37,54 @@ const AVATAR_POSES = {
                 }
             }
         },
+        handRaised: {
+            id: "handRaised",
+            label: "Left hand raised",
+
+            rotations: {
+
+            }
+        },
+        pointing: {
+            id: "pointing",
+            label: "Pointing pose",
+
+            rotations: {
+
+            }
+        },
+        poseName1: {
+            id: "poseName1",
+            label: "pose description",
+
+            rotations: {
+
+            }
+        },
+        poseName2: {
+            id: "poseName2",
+            label: "pose description",
+
+            rotations: {
+
+            }
+        },
+        poseName3: {
+            id: "poseName3",
+            label: "pose description",
+
+            rotations: {
+
+            }
+        },
+        poseName4: {
+            id: "poseName",
+            label: "pose description",
+
+            rotations: {
+
+            }
+        },
     },
 
     avatar1: {
