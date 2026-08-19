@@ -53,28 +53,109 @@ const AVATAR_POSES = {
 
             }
         },
-        poseName1: {
-            id: "poseName1",
-            label: "pose description",
+        handOnBally: {
+            id: "handOnBally",
+            label: "Hand on bally",
 
             rotations: {
+                leftArm: {
+                    quaternion: {
+                        x: 0.600306,
+                        y: -0.240924,
+                        z: 0.240924,
+                        w: 0.723563
+                    },
 
+                    eulerDegrees: {
+                        x: 80,
+                        y: -20,
+                        z: 20
+                    }
+                },
+                leftForeArm: {
+                    quaternion: {
+                        x: 0.610164,
+                        y: -0.016027,
+                        z: -0.016027,
+                        w: 0.791951
+                    },
+
+                    eulerDegrees: {
+                        x: 75,
+                        y: -10,
+                        z: -10
+                    }
+                }
             }
         },
-        poseName2: {
-            id: "poseName2",
-            label: "pose description",
+        handOnBack: {
+            id: "handOnBack",
+            label: "Hand on back",
 
             rotations: {
+                leftArm: {
+                    quaternion: {
+                        x: 0.514548,
+                        y: 0.136873,
+                        z: 0.017816,
+                        w: 0.846279
+                    },
 
+                    eulerDegrees: {
+                        x: 60,
+                        y: 30,
+                        z: 20
+                    }
+                },
+                leftForeArm: {
+                    quaternion: {
+                        x: 0.610164,
+                        y: -0.016027,
+                        z: -0.016027,
+                        w: 0.791951
+                    },
+
+                    eulerDegrees: {
+                        x: 75,
+                        y: -10,
+                        z: -10
+                    }
+                }
             }
         },
-        poseName3: {
-            id: "poseName3",
-            label: "pose description",
+        raiseHand: {
+            id: "raiseHand",
+            label: "Raise hand",
 
             rotations: {
+                leftArm: {
+                    quaternion: {
+                        x: 0.538986,
+                        y: -0.280166,
+                        z: 0.196175,
+                        w: 0.769751
+                    },
 
+                    eulerDegrees: {
+                        x: 70,
+                        y: -40,
+                        z: 0
+                    }
+                },
+                leftForeArm: {
+                    quaternion: {
+                        x: 0.173648,
+                        y: 0,
+                        z: 0,
+                        w: 0.984808
+                    },
+
+                    eulerDegrees: {
+                        x: 20,
+                        y: 0,
+                        z: 0
+                    }
+                }
             }
         },
         poseName4: {
