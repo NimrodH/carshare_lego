@@ -9,31 +9,30 @@ const AVATAR_POSES = {
             rotations: {
                 leftArm: {
                     quaternion: {
-                        x: 0.51455,
-                        y: 0.136873,
-                        z: 0.017816,
-                        w: 0.846279
+                        x: 0.610244,
+                        y: -0.209134,
+                        z: 0.21451,
+                        w: 0.733383
                     },
 
                     eulerDegrees: {
-                        x: 60,
-                        y: 30,
+                        x: 80,
+                        y: -15,
                         z: 20
                     }
                 },
-
                 leftForeArm: {
                     quaternion: {
-                        x: 0.1,
-                        y: 0.2,
-                        z: 0.05,
-                        w: 0.973
+                        x: 0.63682,
+                        y: -0.094633,
+                        z: 0.089257,
+                        w: 0.759959
                     },
 
                     eulerDegrees: {
-                        x: 13.122,
-                        y: 22.393,
-                        z: 8.278
+                        x: 80,
+                        y: -10,
+                        z: 5
                     }
                 }
             }
