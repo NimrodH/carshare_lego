@@ -600,24 +600,63 @@
             /// Event listener for pointer clicks
 
             const maxR = 5; // Maximum radius of the circle , same as the ground size
-            let R = 0; // Initial radius of the circle
-            let angle = BABYLON.Tools.ToRadians(90); // Initial angle in radians
-            let rotationSpeed = BABYLON.Tools.ToRadians(20); // Rotation speed (20 degrees per click)
-            let moveSpeed = 1; // Rotation speed (20 degrees per click)
+            let R = 0; // Current (smoothed) radius of the circle - 0 is the original overview point
+            let targetR = 0; // Radius the scroll wheel is walking us toward
+            let angle = BABYLON.Tools.ToRadians(90); // Current (smoothed) angle in radians
+            let targetAngle = angle; // Angle the mouse-button rotation is walking us toward
+            const rotationSpeed = BABYLON.Tools.ToRadians(20); // Rotation step per click
+            const moveSpeed = 1; // Radius step per wheel tick
+            const rWalkSpeed = 4; // units/sec - how fast R eases toward targetR (the "walking" speed)
+            const angleWalkSpeed = BABYLON.Tools.ToRadians(90); // rad/sec - how fast angle eases toward targetAngle
+
+            const baseCameraY = 1; // camera height at the original point (R = 0), unchanged from before
+            // Approx world height of the TOP edge of the green sign, which now floats
+            // above the avatar's head instead of at chest height (see avatar.js
+            // matchUser: avatarHeadTopY(~1.8) + 0.3 gap + planeSize/2(~0.43)).
+            const signTopY = 2.5;
+
+            // Move `current` toward `target` by at most `maxDelta`, without overshooting.
+            function moveTowards(current, target, maxDelta) {
+                if (Math.abs(target - current) <= maxDelta) return target;
+                return current + Math.sign(target - current) * maxDelta;
+            }
 
             // Function to update the camera position based on the current angle and radius
             function updateCameraPosition() {
                 camera.position.x = R * Math.cos(angle);
                 camera.position.z = R * Math.sin(angle);
 
+                // 0 = original point (R = 0), 1 = walked all the way in to the sign (R = maxR)
+                const zoomT = BABYLON.Scalar.Clamp(R / maxR, 0, 1);
+                // Raise the camera and its look-at point together as the user walks
+                // in, so the upper edge of the green sign stays in view instead of
+                // sliding above the frame as the avatar gets closer/taller-looking.
+                camera.position.y = BABYLON.Scalar.Lerp(baseCameraY, signTopY - 0.4, zoomT);
+
                 // Extend the target point outward from the center
                 const targetDistance = R + 2; // 2 units further out to define the facing direction
                 const targetX = targetDistance * Math.cos(angle);
                 const targetZ = targetDistance * Math.sin(angle);
+                const targetY = BABYLON.Scalar.Lerp(baseCameraY - 0.2, signTopY, zoomT);
 
                 // Make the camera face outward (away from the center)
-                camera.setTarget(new BABYLON.Vector3(targetX, camera.position.y - 0.2, targetZ));
+                camera.setTarget(new BABYLON.Vector3(targetX, targetY, targetZ));
             }
+
+            // Every frame, smoothly walk R and angle toward whatever the wheel/mouse
+            // clicks last requested, instead of snapping instantly. This keeps the
+            // sign framing (tied to R via zoomT above) changing gradually too, so its
+            // upper edge never pops in/out of frame, and lets a rotation (moving to
+            // look at a different avatar) blend together with an in-progress zoom.
+            scene.onBeforeRenderObservable.add(() => {
+                const dt = engine.getDeltaTime() / 1000;
+                const rChanged = R !== targetR;
+                const angleChanged = angle !== targetAngle;
+                if (!rChanged && !angleChanged) return;
+                R = moveTowards(R, targetR, rWalkSpeed * dt);
+                angle = moveTowards(angle, targetAngle, angleWalkSpeed * dt);
+                updateCameraPosition();
+            });
 
             // Event listener for pointer clicks
             scene.onPointerDown = function (evt, pickResult) {
@@ -626,12 +665,10 @@
                     if (pickResult.hit && (pickResult.pickedMesh === ground || pickResult.pickedMesh === skybox)) {
                         if (evt.button === 2) {
                             // Move camera clockwise
-                            angle -= rotationSpeed;
-                            updateCameraPosition();
+                            targetAngle -= rotationSpeed;
                         } else if (evt.button === 0) {
                             // Move camera counter-clockwise
-                            angle += rotationSpeed;
-                            updateCameraPosition();
+                            targetAngle += rotationSpeed;
                         }
                     }
                 }
@@ -649,18 +686,13 @@
                         const event = pointerInfo.event;
                         //console.log("event.deltaY: " + event.deltaY);
                         if (event.deltaY < 0) {
-                            // Zoom in
-                            R += moveSpeed;
+                            // Walk in toward the sign
+                            targetR += moveSpeed;
                         } else {
-                            // Zoom out
-                            R -= moveSpeed;
+                            // Walk back out toward the original point
+                            targetR -= moveSpeed;
                         }
-                        if (R > maxR) {
-                            R = maxR - 0.5;
-                        } else if (R < 0) {
-                            R = 0;
-                        }
-                        updateCameraPosition();
+                        targetR = BABYLON.Scalar.Clamp(targetR, 0, maxR);
                         event.preventDefault();
                         break;
 
