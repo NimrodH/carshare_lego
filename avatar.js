@@ -160,6 +160,21 @@ class Avatar {
         this.frontSign = new AvatarMessage(planeSize, signX, signY, signZ, signMessageData, this)
     }
 
+    hideAvatarMeshes() {
+        if (!this.avatarMesh) return;
+
+        // Keep the root visible because the sign is parented to it.
+        this.avatarMesh.isVisible = true;
+        if (this.avatarMesh.getTotalVertices() > 0 && this.avatarMesh.material) {
+            this.avatarMesh.material.alpha = 0;
+        }
+        this.avatarMesh.getChildMeshes().forEach(mesh => {
+            if (this.frontSign?.plane !== mesh) {
+                mesh.isVisible = false;
+            }
+        });
+    }
+
     showGLBFileNameSign() {
         if (!this.avatarGLBFileName || this.frontSign) return;
 
@@ -425,6 +440,9 @@ class Avatar {
         }
         this.avatarMesh = root;
         this.importResult = result; ///kept for poseManager.js (rig transform nodes for posing)
+        if (this.avatarType === "C") {
+            this.hideAvatarMeshes();
+        }
         //this.avatarMesh.scaling = new BABYLON.Vector3(1, 1, 1);
         ///return root;
         ///moved to allow implement on all avatars
