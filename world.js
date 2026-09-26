@@ -282,6 +282,11 @@ class World {
         return this._avatarsArr.find(a => a.avatarID === id);
     }
 
+    ///find by registry id ("avatar8"...), e.g. myWorld.registryIdToAvatar("avatar8").walkToCenter()
+    registryIdToAvatar(registryId) {
+        return this._avatarsArr.find(a => a.avatarData.id === registryId);
+    }
+
     // ---------- CHAT ----------
 
 

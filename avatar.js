@@ -489,6 +489,23 @@ class Avatar {
         }
     }
 
+    ///walk animation (see walkAvatar.js); each resolves true on arrival, false if cancelled
+    walkToCenter(options) {
+        return walkAvatarToCenter(this, options);
+    }
+
+    walkHome(options) {
+        return walkAvatarHome(this, options);
+    }
+
+    stopWalking() {
+        stopAvatarWalk(this);
+    }
+
+    get isWalking() {
+        return isAvatarWalking(this);
+    }
+
     chatRequest() {
         this.myWorld.chatRequest(this.ID);
         //console.log("chatRequest on avatar: " + this.ID);

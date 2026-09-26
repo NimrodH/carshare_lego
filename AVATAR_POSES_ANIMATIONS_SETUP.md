@@ -211,3 +211,48 @@ await playMotionSequence(scene, avatar.importResult, avatarId, "wave", {
 - Posing/animation only applies to rigged GLB avatars (`avatarType` other than
   `"A"`). Lego-block avatars (`avatarType === "A"`) have no skeleton and are
   not affected by `applyPose`/`animateToPose`/`playMotionSequence`.
+
+---
+
+## 5. Walking (walk to the center of the circle)
+
+[walkAvatar.js](walkAvatar.js) walks an avatar in a straight line using a real
+Ready Player Me walk clip (`M_Walk_001` for men, `F_Walk_002` for women, picked
+by `avatarData.loadedIsMan`). Load it after `poseManager.js`; it has no other
+dependencies beyond Babylon.js and the `Avatar` object.
+
+```js
+await avatar.walkToCenter();   // turns to the center, walks, stops 1.0 short of it
+await avatar.walkHome();       // walks back to avatarData.x/z and faces the center again
+avatar.stopWalking();          // cancel; the pending promise resolves false
+avatar.isWalking;              // true while walking/turning
+
+// In index.html the avatars live in the World:
+myWorld.registryIdToAvatar("avatar8").walkToCenter({ stopDistance: 1.5 });
+```
+
+Options (defaults in `WALK_DEFAULTS`): `speedRatio` (clip speed, 0.8),
+`blendSeconds` (ease in/out, 0.35), `turnSeconds` (0.4), `stopDistance` (1.0),
+`slideSpeed` (m/s for avatars without a rig, 1.2).
+
+How it works:
+- The clip GLB is loaded once per gender into an `AssetContainer` (never added
+  to the scene) and its tracks are retargeted onto each avatar's bones by name.
+- The clip moves the `Hips` bone forward as it walks; that drift is removed
+  (the clip walks in place) and the avatar's root mesh is moved instead, at the
+  clip's own forward speed times `speedRatio`, so the feet don't slide.
+- The clip's weight fades in/out with the speed, and when the walk ends the
+  bones are restored exactly to the pose they had before (e.g. `neutral`).
+- Lego avatars (`"A"`), or any avatar whose clip fails to load, just slide.
+- Several avatars sent to the center stop on a ring of radius `stopDistance`,
+  so pick a larger value if many will walk in at once.
+
+The clips are loaded straight from
+[readyplayerme/animation-library](https://github.com/readyplayerme/animation-library)
+on GitHub at a pinned commit (`WALK_CLIP_BASE_URL`). The Ready Player Me
+platform itself shut down on Jan 31 2026, but that repo is still public. Its
+license allows free personal/commercial use with Ready Player Me avatars but
+forbids redistributing the animations, which is why they are not copied into
+this repo. To serve them yourself (e.g. if the repo disappears), copy the two
+GLBs keeping the `masculine/glb/locomotion/` and `feminine/glb/locomotion/`
+layout and set `WALK_CLIP_BASE_URL = "Avatars/animations/"`.
