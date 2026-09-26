@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Avatar animation demo</title>
+    <!--
+        Test page for avatar animations, without sign-in, server or chat.
+        Same scene, camera point and avatar circle as index.html.
+        To test a new animation, add an entry to DEMO_ACTIONS below.
+    -->
+
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+
+    <script src="avatar.js"></script>
+    <script src="avatarPoses.js"></script>
+    <script src="poseManager.js"></script>
+    <script src="walkAvatar.js"></script>
+    <script src="world.js"></script>
+    <script src="avatarRegistry.js"></script>
+
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.65);
+            color: white;
+            font-size: 16px;
+            max-width: calc(100% - 40px);
+        }
+
+        #panel select, #panel button {
+            font-size: 16px;
+            margin: 3px 2px;
+            padding: 6px 10px;
+        }
+
+        #status {
+            margin-top: 6px;
+            font-size: 14px;
+            opacity: 0.85;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="panel">
+        <div>
+            Avatar: <select id="avatarSelect"></select>
+        </div>
+        <div id="actions"></div>
+        <div>
+            <button id="rotateLeft">&#9664; turn</button>
+            <button id="rotateRight">turn &#9654;</button>
+        </div>
+        <div id="status">Loading avatars…</div>
+    </div>
+
+    <script>
+        // ============================================================
+        // ANIMATIONS TO TEST - one button per entry
+        // ============================================================
+        // run(avatar) gets the selected Avatar (see avatar.js); return a promise.
+        const DEMO_ACTIONS = [
+            {
+                label: "Walk in",
+                run: avatar => avatar.walkToCenter({ stopDistance: CHAT_WALK_STOP_DISTANCE })
+            },
+            {
+                label: "Walk home",
+                run: avatar => avatar.walkHome()
+            },
+            {
+                label: "Stop",
+                run: avatar => avatar.stopWalking()
+            }
+            // Example for a future test (needs motionSequences.js + animateAvatar.js loaded above):
+            // {
+            //     label: "Wave",
+            //     run: avatar => playMotionSequence(scene, avatar.importResult, avatar.avatarData.id, "wave")
+            // }
+        ];
+
+        // Avatar selected when the page opens: straight in front of the camera.
+        const DEFAULT_AVATAR_ID = "avatar8";
+
+        // ============================================================
+        // SCENE - same camera, lights, sky and ground as index.html
+        // ============================================================
+        const canvas = document.getElementById("renderCanvas");
+        const statusEl = document.getElementById("status");
+        const avatarSelect = document.getElementById("avatarSelect");
+        const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+        const scene = new BABYLON.Scene(engine);
+        const avatars = [];
+
+        const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 1, 0), scene);
+        camera.setTarget(new BABYLON.Vector3(0, 1, 1));
+        camera.attachControl(canvas, true);
+        camera.inputs.removeByType("FreeCameraMouseInput");
+
+        const light1 = new BABYLON.DirectionalLight("DirectionalLight", new BABYLON.Vector3(0, -1, 1), scene);
+        const light2 = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0, 1, 0), scene);
+        light1.intensity = 0.75;
+        light2.intensity = 0.5;
+
+        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+        const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/pink", scene);
+        skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+        skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+        skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        skybox.material = skyboxMaterial;
+
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 1000, height: 1000 }, scene);
+        ground.material = new BABYLON.GridMaterial("mat", scene);
+
+        const environment = scene.createDefaultEnvironment({ createGround: false, skyboxSize: 1000 });
+        environment.setMainColor(BABYLON.Color3.FromHexString("#74b9ff"));
+
+        // Turning in place, like clicking the ground in index.html (the camera stays
+        // at the center of the circle, so that is the view the chat partner walks into).
+        const rotationStep = BABYLON.Tools.ToRadians(20);
+        const angleWalkSpeed = BABYLON.Tools.ToRadians(90); // rad/sec
+        let angle = BABYLON.Tools.ToRadians(90);
+        let targetAngle = angle;
+
+        scene.onBeforeRenderObservable.add(() => {
+            if (angle === targetAngle) return;
+            const maxDelta = angleWalkSpeed * engine.getDeltaTime() / 1000;
+            angle = Math.abs(targetAngle - angle) <= maxDelta
+                ? targetAngle
+                : angle + Math.sign(targetAngle - angle) * maxDelta;
+            camera.setTarget(new BABYLON.Vector3(2 * Math.cos(angle), 0.8, 2 * Math.sin(angle)));
+        });
+
+        document.getElementById("rotateLeft").onclick = () => { targetAngle += rotationStep; };
+        document.getElementById("rotateRight").onclick = () => { targetAngle -= rotationStep; };
+
+        // Tap an avatar to select it; tap the ground/sky to turn (left/right button on a PC).
+        scene.onPointerDown = (evt, pickResult) => {
+            if (!pickResult.hit) return;
+            const picked = pickResult.pickedMesh;
+            const avatar = avatars.find(a => picked === a.avatarMesh || picked.isDescendantOf(a.avatarMesh));
+            if (avatar) {
+                avatarSelect.value = avatar.avatarData.id;
+                setStatus(`Selected ${describe(avatar)}`);
+            } else if (picked === ground || picked === skybox) {
+                targetAngle += evt.button === 2 ? -rotationStep : rotationStep;
+            }
+        };
+        canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+        engine.runRenderLoop(() => scene.render());
+        window.addEventListener("resize", () => engine.resize());
+
+        // ============================================================
+        // AVATARS + BUTTONS
+        // ============================================================
+        function setStatus(text) {
+            statusEl.textContent = text;
+        }
+
+        function describe(avatar) {
+            return `${avatar.avatarData.id} (${avatar.avatarData.loadedIsMan ? "man" : "woman"})`;
+        }
+
+        function selectedAvatar() {
+            return avatars.find(a => a.avatarData.id === avatarSelect.value);
+        }
+
+        for (const action of DEMO_ACTIONS) {
+            const button = document.createElement("button");
+            button.textContent = action.label;
+            button.onclick = async () => {
+                const avatar = selectedAvatar();
+                if (!avatar) return;
+                setStatus(`${action.label}: ${describe(avatar)}…`);
+                try {
+                    const result = await action.run(avatar);
+                    setStatus(`${action.label}: ${result === false ? "cancelled" : "done"} - ${describe(avatar)}`);
+                } catch (error) {
+                    console.error(error);
+                    setStatus(`${action.label} failed: ${error.message}`);
+                }
+            };
+            document.getElementById("actions").appendChild(button);
+        }
+
+        (async () => {
+            const definitions = getAllAvatarDefinitions();
+            let loaded = 0;
+            await Promise.all(definitions.map(async data => {
+                const avatar = new Avatar(data, null, "B");
+                await avatar.createAvatarMesh(scene);
+                if (!avatar.avatarMesh) return;
+                avatar.placeAvatar();
+                avatars.push(avatar);
+                setStatus(`Loading avatars… ${++loaded} / ${definitions.length}`);
+            }));
+
+            avatars.sort((a, b) => a.avatarData.id.localeCompare(b.avatarData.id, undefined, { numeric: true }));
+            for (const avatar of avatars) {
+                avatarSelect.add(new Option(describe(avatar), avatar.avatarData.id));
+            }
+            if (avatars.some(a => a.avatarData.id === DEFAULT_AVATAR_ID)) {
+                avatarSelect.value = DEFAULT_AVATAR_ID;
+            }
+            setStatus("Ready - pick an avatar (or tap one) and press a button");
+            window.demoAvatars = avatars; // for the console
+        })();
+    </script>
+</body>
+
+</html>

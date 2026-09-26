@@ -234,7 +234,8 @@ myWorld.registryIdToAvatar("avatar8").walkToCenter({ stopDistance: 1.5 });
 **Chat:** in `index.html` the walk is wired to chat. When a chat starts (you
 clicked an avatar's chat button, or an incoming chat opened), the partner avatar
 walks from its place on the circle towards the center, where the viewer's camera
-stands, stopping `CHAT_WALK_STOP_DISTANCE` (1.5, in `world.js`) short of it. When
+stands, stopping `CHAT_WALK_STOP_DISTANCE` (2.5, in `world.js`, so the whole
+body stays in view) short of it. When
 the chat ends (closed, or ended by the other side) it walks back
 (`World.walkPartnerIn()` / `World.walkPartnerHome()`). The walk is local to each
 viewer's browser and is not sent to other viewers.
@@ -264,3 +265,19 @@ forbids redistributing the animations, which is why they are not copied into
 this repo. To serve them yourself (e.g. if the repo disappears), copy the two
 GLBs keeping the `masculine/glb/locomotion/` and `feminine/glb/locomotion/`
 layout and set `WALK_CLIP_BASE_URL = "Avatars/animations/"`.
+
+---
+
+## 6. Testing animations — `animDemo.html`
+
+[animDemo.html](animDemo.html) shows the same scene, camera point (center of
+the circle) and avatar circle as `index.html`, with no sign-in, server or chat.
+Pick an avatar (or tap it), then press **Walk in** / **Walk home** / **Stop**;
+**◀ turn / turn ▶** (or tapping the ground, like the app) turns the camera.
+
+Open it at `http://localhost:5500/animDemo.html` (`npm run dev`), or on GitHub
+Pages at `https://nimrodh.github.io/carshare_lego/animDemo.html` once merged.
+
+To try a new animation before adding it to the app, add an entry to
+`DEMO_ACTIONS` at the top of the page's script — it becomes a button that runs
+`run(avatar)` on the selected avatar (and load any extra scripts it needs).

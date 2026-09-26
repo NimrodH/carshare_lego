@@ -3,7 +3,7 @@
 
 // How far from the center of the circle (where the viewer's camera stands)
 // the chat partner stops after walking in.
-const CHAT_WALK_STOP_DISTANCE = 1.5;
+const CHAT_WALK_STOP_DISTANCE = 2.5;
 
 class World {
     constructor(scene) {
