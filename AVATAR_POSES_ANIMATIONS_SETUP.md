@@ -278,6 +278,15 @@ Pick an avatar (or tap it), then press **Walk in** / **Walk home** / **Stop**;
 Open it at `http://localhost:5500/animDemo.html` (`npm run dev`), or on GitHub
 Pages at `https://nimrodh.github.io/carshare_lego/animDemo.html` once merged.
 
+**Clip** lists all 119 clips of the Ready Player Me animation library
+(idle, expression, dance, locomotion); **▶ Play** plays the selected one on the
+selected avatar (looping if **loop** is ticked), **■ Stop clip** / **Stop**
+stop it and restore the avatar's pose. Clips are played as authored by
+[avatarClips.js](avatarClips.js) (`playAvatarClip()` / `stopAvatarClip()`):
+body movement is not corrected, so jumps/falls move up and down and
+walk/run clips move forward and snap back each loop. Starting a walk stops a
+playing clip.
+
 To try a new animation before adding it to the app, add an entry to
 `DEMO_ACTIONS` at the top of the page's script — it becomes a button that runs
 `run(avatar)` on the selected avatar (and load any extra scripts it needs).

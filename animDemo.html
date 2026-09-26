@@ -19,6 +19,7 @@
     <script src="avatarPoses.js"></script>
     <script src="poseManager.js"></script>
     <script src="walkAvatar.js"></script>
+    <script src="avatarClips.js"></script>
     <script src="world.js"></script>
     <script src="avatarRegistry.js"></script>
 
@@ -72,6 +73,14 @@
         </div>
         <div id="actions"></div>
         <div>
+            Clip: <select id="clipSelect"></select>
+            <label><input type="checkbox" id="clipLoop" checked /> loop</label>
+        </div>
+        <div>
+            <button id="playClip">&#9654; Play</button>
+            <button id="stopClip">&#9632; Stop clip</button>
+        </div>
+        <div>
             <button id="rotateLeft">&#9664; turn</button>
             <button id="rotateRight">turn &#9654;</button>
         </div>
@@ -94,7 +103,7 @@
             },
             {
                 label: "Stop",
-                run: avatar => avatar.stopWalking()
+                run: avatar => { avatar.stopWalking(); stopAvatarClip(avatar); }
             }
             // Example for a future test (needs motionSequences.js + animateAvatar.js loaded above):
             // {
@@ -209,6 +218,44 @@
             };
             document.getElementById("actions").appendChild(button);
         }
+
+        // ============================================================
+        // LIBRARY CLIPS (avatarClips.js) - played as is, including any
+        // up/down or forward movement of the body
+        // ============================================================
+        for (const [category, names] of Object.entries(RPM_CLIP_CATALOG)) {
+            const group = document.createElement("optgroup");
+            group.label = `${category} (${names.length})`;
+            for (const name of names) {
+                group.appendChild(new Option(name, `${category}/${name}`));
+            }
+            document.getElementById("clipSelect").appendChild(group);
+        }
+
+        document.getElementById("playClip").onclick = async () => {
+            const avatar = selectedAvatar();
+            if (!avatar) return;
+            const [category, name] = document.getElementById("clipSelect").value.split("/");
+            const loop = document.getElementById("clipLoop").checked;
+            setStatus(`Loading ${name}…`);
+            try {
+                const seconds = await getRpmClipDuration(avatar, category, name);
+                const playing = playAvatarClip(avatar, category, name, { loop });
+                setStatus(`Playing ${name} (${seconds.toFixed(1)} s${loop ? ", looping" : ""}) - ${describe(avatar)}`);
+                const completed = await playing;
+                if (completed) setStatus(`Finished ${name} - ${describe(avatar)}`);
+            } catch (error) {
+                console.error(error);
+                setStatus(`${name} failed: ${error.message}`);
+            }
+        };
+
+        document.getElementById("stopClip").onclick = () => {
+            const avatar = selectedAvatar();
+            if (!avatar) return;
+            stopAvatarClip(avatar);
+            setStatus(`Stopped clip - ${describe(avatar)}`);
+        };
 
         (async () => {
             const definitions = getAllAvatarDefinitions();

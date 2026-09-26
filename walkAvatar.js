@@ -67,6 +67,7 @@ async function walkAvatarTo(avatar, target, options = {}) {
     const scene = mesh.getScene();
 
     stopAvatarWalk(avatar);
+    if (typeof stopAvatarClip === "function") stopAvatarClip(avatar); // avatarClips.js, if loaded
     const token = { cancelled: false, cleanup: null };
     avatar._walkToken = token;
 
