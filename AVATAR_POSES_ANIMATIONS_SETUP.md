@@ -231,6 +231,14 @@ avatar.isWalking;              // true while walking/turning
 myWorld.registryIdToAvatar("avatar8").walkToCenter({ stopDistance: 1.5 });
 ```
 
+**Chat:** in `index.html` the walk is wired to chat. When a chat starts (you
+clicked an avatar's chat button, or an incoming chat opened), the partner avatar
+walks from its place on the circle towards the center, where the viewer's camera
+stands, stopping `CHAT_WALK_STOP_DISTANCE` (1.5, in `world.js`) short of it. When
+the chat ends (closed, or ended by the other side) it walks back
+(`World.walkPartnerIn()` / `World.walkPartnerHome()`). The walk is local to each
+viewer's browser and is not sent to other viewers.
+
 Options (defaults in `WALK_DEFAULTS`): `speedRatio` (clip speed, 0.8),
 `blendSeconds` (ease in/out, 0.35), `turnSeconds` (0.4), `stopDistance` (1.0),
 `slideSpeed` (m/s for avatars without a rig, 1.2).

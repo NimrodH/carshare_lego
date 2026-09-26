@@ -388,6 +388,7 @@ class Chat {
 
                         this.dispose();
                         if (this.myWorld.currChat === this) this.myWorld.currChat = null;
+                        this.myWorld.walkPartnerHome?.();
                         this.myWorld.allowPointer = true;
                         this.myWorld.startPeriodicUpdate();
                         return;

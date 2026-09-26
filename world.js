@@ -1,6 +1,10 @@
 // world.js — merged HTTP-only version
 // Combines full visual/avatar logic from old version with new HTTP communication
 
+// How far from the center of the circle (where the viewer's camera stands)
+// the chat partner stops after walking in.
+const CHAT_WALK_STOP_DISTANCE = 1.5;
+
 class World {
     constructor(scene) {
         this.PERIODIC_UPDATE_MS = 10000; // 20000 ->20s (safe minimum)
@@ -13,6 +17,7 @@ class World {
         this.currChat = null;
         this.periodicUpdateInterval = null;
         this.stickyUntilDone = new Set();
+        this.walkedInAvatar = null; // chat partner that walked to the center (local only, not synced)
     }
 
     // 1) Helper: read current status of a specific avatar (no writes)
@@ -218,6 +223,7 @@ class World {
                     this.currChat = new Chat(this.myAvatar, partner, this, meSrv.chatID);
                     if (partner.setState) partner.setState("myChat");
                     if (this.myAvatar.setState) this.myAvatar.setState("myChat");
+                    this.walkPartnerIn(partner);
                     console.log("[CHAT] Auto-opened incoming chat:", meSrv.chatID);
                     this.stopPeriodicUpdate();
                     this.allowPointer = false;
@@ -251,6 +257,7 @@ class World {
 
                     // keep my own state as noChat
                     if (this.myAvatar?.setState) this.myAvatar.setState("noChat");
+                    this.walkPartnerHome();
                     console.log("[CHAT] Auto-closed (remote end detected)");
                 }
             }
@@ -280,6 +287,25 @@ class World {
 
     idToAvatar(id) {
         return this._avatarsArr.find(a => a.avatarID === id);
+    }
+
+    // ---------- CHAT WALK (see walkAvatar.js) ----------
+    // The chat partner walks from its place on the circle towards the center
+    // (the viewer) when a chat starts, and back when it ends.
+    walkPartnerIn(partner) {
+        if (!partner?.avatarMesh) return;
+        if (this.walkedInAvatar && this.walkedInAvatar !== partner) this.walkPartnerHome();
+        this.walkedInAvatar = partner;
+        partner.walkToCenter({ stopDistance: CHAT_WALK_STOP_DISTANCE })
+            .catch(err => console.warn("[WALK] walk to center failed:", err));
+    }
+
+    walkPartnerHome() {
+        const partner = this.walkedInAvatar;
+        if (!partner) return;
+        this.walkedInAvatar = null;
+        partner.walkHome()
+            .catch(err => console.warn("[WALK] walk home failed:", err));
     }
 
     ///find by registry id ("avatar8"...), e.g. myWorld.registryIdToAvatar("avatar8").walkToCenter()
@@ -366,6 +392,7 @@ class World {
             this.allowPointer = false;
             if (toAvatar.setState) toAvatar.setState("myChat");
             if (this.myAvatar?.setState) this.myAvatar.setState("myChat");
+            this.walkPartnerIn(toAvatar);
             console.log("[CHAT] Started with chatID:", res.chatID);
 
         } catch (err) {
@@ -441,6 +468,7 @@ class World {
             this.currChat?.dispose?.();
             this.currChat = null;
             this.allowPointer = true;
+            this.walkPartnerHome();
 
             const partnerID = toID;
             this.stickyUntilDone.add(partnerID);
@@ -516,6 +544,7 @@ class World {
             this.currChat = null;
             this.allowPointer = true;
             this.startPeriodicUpdate();
+            this.walkPartnerHome();
         }
         const fromA = this.idToAvatar(fromID);
         const toA = this.idToAvatar(toID);
