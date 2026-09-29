@@ -18,7 +18,8 @@
 //           "hold" - freeze the avatar in the first frame of one of `clips`
 //           "loop" - keep playing `clips` one after the other in random order
 //                    (never the same clip twice in a row) until the state changes
-//     then: "walkIn"   - walk to the center (only while the camera is at the center)
+//     then: "walkIn"   - walk towards the viewer: to the center when the camera is
+//                        there, otherwise half the way to the camera
 //           "walkHome" - walk back to the avatar's place and face the center
 //     turnAfter: same values as turnBefore
 //     next: "<state>"  - continue with this state
@@ -33,7 +34,7 @@ const AVATAR_STATE_CLIPS = {
     // Waiting to get a call
     waiting: { play: "loop", clips: ["_Standing_Idle_*"] },
 
-    // The camera (at the center) points at the avatar while it waits
+    // The camera points at the avatar while it waits
     lookedAt: {
         play: "one",
         clips: ["_Standing_Expressions_001", "_Standing_Expressions_010"],
@@ -47,9 +48,6 @@ const AVATAR_STATE_CLIPS = {
         then: "walkIn",
         next: "talking"
     },
-
-    // The camera came back to the center during the call: walk in now
-    walkingIn: { then: "walkIn", next: "talking" },
 
     // During the call with me
     talking: { play: "loop", clips: ["_Talking_Variations_*"] },

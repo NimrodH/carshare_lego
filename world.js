@@ -5,7 +5,7 @@
 // the chat partner stops after walking in.
 const CHAT_WALK_STOP_DISTANCE = 2.5;
 
-// Camera checks (walk-in and look-at reactions, see startCameraWatch()).
+// Look-at reactions (see startCameraWatch()).
 const CAMERA_WATCH_MS = 200;          // how often the camera is checked
 const LOOK_AT_MAX_DEGREES = 10;       // how close to the middle of the view the avatar must be
 const LOOK_AT_DWELL_SECONDS = 0.5;    // how long the camera must stay on it
@@ -321,9 +321,8 @@ class World {
         return typeof window.isCameraAtCenter === "function" ? window.isCameraAtCenter() : true;
     }
 
-    /// Checks the camera a few times a second, only while it is at the center:
-    /// walks the chat partner in if it hasn't yet, and lets a waiting avatar react
-    /// when the camera points at it.
+    /// Checks the camera a few times a second, wherever it is, and lets a waiting
+    /// avatar react when the camera points at it.
     startCameraWatch() {
         if (this.cameraWatch) return;
         let elapsedMs = 0;
@@ -332,11 +331,6 @@ class World {
             if (elapsedMs < CAMERA_WATCH_MS) return;
             const seconds = elapsedMs / 1000;
             elapsedMs = 0;
-            if (!this.isCameraAtCenter()) {
-                this.gaze = null;
-                return;
-            }
-            this.walkPartnerInIfWaiting();
             this.updateGaze(seconds);
         });
     }
@@ -400,33 +394,34 @@ class World {
     }
 
     // ---------- CHAT WALK (see walkAvatar.js) ----------
-    // The chat partner plays its "accepted" clip and walks from its place on the
-    // circle towards the center (the viewer) when a chat starts, and back when it
-    // ends. It only walks in while the camera is at the center; if the camera is
-    // out towards the avatars, it waits for the camera to come back.
+    // The chat partner plays its "accepted" clip and walks towards the viewer when
+    // a chat starts, and back to its place when it ends.
     walkPartnerIn(partner) {
         if (!partner?.avatarMesh) return;
         if (this.chatPartner && this.chatPartner !== partner) this.walkPartnerHome(false);
         this.chatPartner = partner;
         if (typeof canAnimateAvatar === "function" && canAnimateAvatar(partner)) {
-            setAvatarAnimState(partner, "accepted");
+            setAvatarAnimState(partner, "accepted"); // its "walkIn" step calls walkPartnerToViewer()
         } else {
-            this.walkPartnerInIfWaiting(); // no clips (lego avatars): just walk
+            // no clips (lego avatars): just walk
+            this.walkPartnerToViewer(partner)
+                .catch(err => console.warn("[WALK] walk in failed:", err));
         }
     }
 
-    /// Walk the chat partner in if it hasn't yet and the camera is at the center.
-    walkPartnerInIfWaiting() {
-        const partner = this.chatPartner;
-        if (!partner || partner._walkedIn || !this.isCameraAtCenter()) return;
-        if (typeof canAnimateAvatar === "function" && canAnimateAvatar(partner)) {
-            // Waits for the "accepted" clip, which walks in by itself.
-            if (getAvatarAnimState(partner) === "talking") setAvatarAnimState(partner, "walkingIn");
-            return;
+    /// Walk the chat partner towards the viewer's camera. With the camera at the
+    /// center it stops CHAT_WALK_STOP_DISTANCE from the center; with the camera
+    /// walked out towards the avatars it walks half the way to the camera and
+    /// turns to face it. Resolves true on arrival, false if cancelled.
+    walkPartnerToViewer(partner) {
+        const camera = this.scene.activeCamera;
+        if (this.isCameraAtCenter() || !camera) {
+            return partner.walkToCenter({ stopDistance: CHAT_WALK_STOP_DISTANCE });
         }
-        partner._walkedIn = true;
-        partner.walkToCenter({ stopDistance: CHAT_WALK_STOP_DISTANCE })
-            .catch(err => console.warn("[WALK] walk to center failed:", err));
+        const eye = camera.globalPosition || camera.position;
+        const home = new BABYLON.Vector3(partner.avatarData.x, partner.avatarData.y, partner.avatarData.z);
+        const halfway = new BABYLON.Vector3((home.x + eye.x) / 2, home.y, (home.z + eye.z) / 2);
+        return walkAvatarTo(partner, halfway, { faceAfter: new BABYLON.Vector3(eye.x, home.y, eye.z) });
     }
 
     /// The chat with the partner ended: it plays its end clip (agreed or not) and
@@ -439,7 +434,6 @@ class World {
             setAvatarAnimState(partner, agreed ? "endAgree" : "endNoAgree");
             return;
         }
-        partner._walkedIn = false;
         partner.walkHome()
             .catch(err => console.warn("[WALK] walk home failed:", err));
     }

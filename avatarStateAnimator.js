@@ -30,7 +30,7 @@ const STATE_ANIM_SETTINGS = {
 
 // States of the chat with me: they end by themselves (with `next`), so the
 // server status of that avatar is ignored while they run.
-const CHAT_ANIM_STATES = new Set(["accepted", "walkingIn", "talking", "endAgree", "endNoAgree"]);
+const CHAT_ANIM_STATES = new Set(["accepted", "talking", "endAgree", "endNoAgree"]);
 // States that already mean "waiting for a call".
 const WAITING_ANIM_STATES = new Set(["created", "waiting", "lookedAt", "busyEnd"]);
 
@@ -223,21 +223,16 @@ async function playStateClip(avatar, clip) {
 async function runAvatarStep(avatar, step, isCurrent) {
     switch (step) {
         case "walkIn": {
-            // Only walk in while the viewer's camera is at the center; otherwise the
-            // world walks the avatar in later, when the camera gets back there.
+            // The world decides where to (towards the center, or half the way to
+            // a camera that was walked out towards the avatars).
             const world = avatar.myWorld;
-            if (world && world.isCameraAtCenter && !world.isCameraAtCenter()) return true;
-            avatar._walkedIn = true;
-            const options = typeof CHAT_WALK_STOP_DISTANCE !== "undefined"
-                ? { stopDistance: CHAT_WALK_STOP_DISTANCE }
-                : {};
-            return await walkAvatarToCenter(avatar, options) && isCurrent();
-        }
-        case "walkHome": {
-            const arrived = await walkAvatarHome(avatar);
-            if (arrived) avatar._walkedIn = false;
+            const arrived = world && world.walkPartnerToViewer
+                ? await world.walkPartnerToViewer(avatar)
+                : await walkAvatarToCenter(avatar);
             return arrived && isCurrent();
         }
+        case "walkHome":
+            return await walkAvatarHome(avatar) && isCurrent();
         default:
             console.warn(`[ANIM] Unknown step "${step}"`);
             return true;
