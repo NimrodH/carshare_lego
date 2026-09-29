@@ -8,11 +8,19 @@
 // authored: the Hips bone keeps all of the clip's movement (up/down, and the
 // forward movement of walk/run clips, which snaps back each time a loop restarts).
 // Only the starting point is moved to the avatar's own rest Hips position.
-// Used by animDemo.html to try clips before building them into the app.
+// Used by animDemo.html to try clips, and by avatarStateAnimator.js in the app.
 //
 // Usage:
 //     await playAvatarClip(avatar, "dance", "M_Dances_001", { loop: false });
 //     stopAvatarClip(avatar);
+//
+// Per avatar:
+//     avatar._clipPlayer  - the clip playing now, or null
+//     avatar._clipRequest - the latest playAvatarClip() call; an older call that is
+//                           still loading its clip gives up when this changes
+//     avatar._clipRest    - the pose from before the first clip; stopAvatarClip()
+//                           returns to it, while a clip that replaces another one
+//                           blends in from wherever the previous one left the avatar
 
 
 // ============================================================
@@ -157,25 +165,32 @@ const RPM_CLIP_CATALOG = {
 
 /**
  * Play a library clip on the avatar. Resolves true when a non-looping clip
- * finishes, false when the clip is stopped (stopAvatarClip, another clip or a walk).
+ * finishes, false when the clip is stopped (stopAvatarClip, another clip or a
+ * walk), also while it is still loading.
  *
  * options:
  *     loop: true            - repeat until stopped
  *     blendSeconds: 0.3     - fade in from the current pose
  *     speedRatio: 1
+ *     restoreOnEnd: true    - when a non-looping clip ends, go back to the pose
+ *                             from before the clip; false keeps its last frame, so
+ *                             the next clip can blend in from there
  */
 async function playAvatarClip(avatar, category, name, options = {}) {
-    const { loop = true, blendSeconds = 0.3, speedRatio = 1 } = options;
+    const { loop = true, blendSeconds = 0.3, speedRatio = 1, restoreOnEnd = true } = options;
     if (!avatar.importResult) {
         throw new Error("This avatar has no skeleton to animate.");
     }
 
-    stopAvatarClip(avatar);
-    stopAvatarWalk(avatar);
-
+    // The current clip keeps playing while the new one loads.
+    const request = {};
+    avatar._clipRequest = request;
     const scene = avatar.avatarMesh.getScene();
     const clip = await loadWalkClip(scene, getRpmClipUrl(avatar, category, name));
-    if (avatar._clipPlayer) stopAvatarClip(avatar); // another clip started while loading
+    if (avatar._clipRequest !== request) return false; // stopped or replaced while loading
+
+    stopAvatarWalk(avatar);
+    endAvatarClip(avatar, false); // leaves the pose where it is; the new clip blends from it
 
     const nodesByName = new Map(
         avatar.importResult.transformNodes.map(node => [node.name, node])
@@ -186,21 +201,32 @@ async function playAvatarClip(avatar, category, name, options = {}) {
         const node = nodesByName.get(track.nodeName);
         if (!node) continue;
         const animation = track.animation.targetProperty === "position"
-            ? offsetPositionTrack(track.animation, node.position)
+            ? offsetPositionTrack(track.animation, getAvatarRestPosition(avatar, node))
             : track.animation;
         group.addTargetedAnimation(animation, node);
         nodes.push(node);
     }
 
-    // Same start/stop as the walk: remember the pose, blend in, restore on stop.
-    const player = { group, nodes: [...new Set(nodes)], snapshot: null, resolve: null };
-    startWalkClip(scene, player, speedRatio);
+    // First clip since the avatar was at rest: stop pose tweens and remember the pose.
+    if (!avatar._clipRest) {
+        const uniqueNodes = [...new Set(nodes)];
+        uniqueNodes.forEach(node => scene.stopAnimation(node));
+        avatar._clipRest = uniqueNodes.map(node => ({
+            node,
+            position: node.position.clone(),
+            rotationQuaternion: node.rotationQuaternion ? node.rotationQuaternion.clone() : null
+        }));
+    }
+
+    group.weight = 0; // blends with the current pose until weight reaches 1
+    group.speedRatio = speedRatio;
+    group.play(true);
     if (!loop) {
         group.loopAnimation = false;
         group.animatables.forEach(animatable => { animatable.loopAnimation = false; });
     }
     const token = { cancelled: false };
-    player.token = token;
+    const player = { group, token, resolve: null };
     avatar._clipPlayer = player;
 
     runEachFrame(scene, token, elapsed => {
@@ -211,18 +237,56 @@ async function playAvatarClip(avatar, category, name, options = {}) {
     return new Promise(resolve => {
         player.resolve = resolve;
         // The end event fires mid-frame, before that frame's animation values are
-        // written, so restore the pose on the next frame or it gets overwritten.
+        // written, so finish on the next frame or a restored pose gets overwritten.
         group.onAnimationGroupEndObservable.addOnce(() => {
             scene.onBeforeRenderObservable.addOnce(() => {
-                if (avatar._clipPlayer === player) finishAvatarClip(avatar, true);
+                if (avatar._clipPlayer !== player) return;
+                endAvatarClip(avatar, true);
+                if (restoreOnEnd) restoreAvatarRestPose(avatar);
             });
         });
     });
 }
 
+/// Put the avatar in the first frame of a clip without playing it (costs
+/// nothing per frame). Resolves false if another clip was asked for meanwhile.
+async function applyAvatarClipPose(avatar, category, name) {
+    if (!avatar.importResult) {
+        throw new Error("This avatar has no skeleton to animate.");
+    }
+    const request = {};
+    avatar._clipRequest = request;
+    const clip = await loadWalkClip(avatar.avatarMesh.getScene(), getRpmClipUrl(avatar, category, name));
+    if (avatar._clipRequest !== request) return false;
+
+    endAvatarClip(avatar, false);
+    const nodesByName = new Map(
+        avatar.importResult.transformNodes.map(node => [node.name, node])
+    );
+    for (const { nodeName, animation } of clip.tracks) {
+        const node = nodesByName.get(nodeName);
+        if (!node) continue;
+        if (animation.targetProperty === "rotationQuaternion") {
+            node.rotationQuaternion = animation.getKeys()[0].value.clone();
+        } else if (animation.targetProperty === "position") {
+            node.position.copyFrom(getAvatarRestPosition(avatar, node));
+        }
+    }
+    return true;
+}
+
 /// Stop the avatar's clip (if any) and return it to the pose it had before.
 function stopAvatarClip(avatar) {
-    if (avatar._clipPlayer) finishAvatarClip(avatar, false);
+    avatar._clipRequest = null;
+    endAvatarClip(avatar, false);
+    restoreAvatarRestPose(avatar);
+}
+
+/// Stop the avatar's clip (if any) but keep its current pose (used before a walk,
+/// so the walk blends in from it).
+function releaseAvatarClip(avatar) {
+    avatar._clipRequest = null;
+    endAvatarClip(avatar, false);
 }
 
 function isAvatarClipPlaying(avatar) {
@@ -241,7 +305,12 @@ async function getRpmClipDuration(avatar, category, name) {
 }
 
 function getRpmClipUrl(avatar, category, name) {
-    const folder = avatar.avatarData.loadedIsMan ? "masculine" : "feminine";
+    return getRpmClipUrlFor(!!avatar.avatarData.loadedIsMan, category, name);
+}
+
+/// Clip URL for a masculine (isMan) or feminine skeleton.
+function getRpmClipUrlFor(isMan, category, name) {
+    const folder = isMan ? "masculine" : "feminine";
     return `${WALK_CLIP_BASE_URL}${folder}/glb/${category}/${name}.glb`;
 }
 
@@ -250,13 +319,23 @@ function getRpmClipUrl(avatar, category, name) {
 // HELPERS
 // ============================================================
 
-function finishAvatarClip(avatar, completed) {
+/// Stop the current clip's animation where it is, and resolve its promise.
+function endAvatarClip(avatar, completed) {
     const player = avatar._clipPlayer;
+    if (!player) return;
     avatar._clipPlayer = null;
     player.token.cancelled = true;
-    stopWalkClip(player);
+    player.group.stop();
     player.group.dispose();
     if (player.resolve) player.resolve(completed);
+}
+
+function restoreAvatarRestPose(avatar) {
+    for (const { node, position, rotationQuaternion } of avatar._clipRest || []) {
+        node.position.copyFrom(position);
+        if (rotationQuaternion) node.rotationQuaternion = rotationQuaternion.clone();
+    }
+    avatar._clipRest = null;
 }
 
 /// Copy of the clip's Hips position track moved so that it starts at this

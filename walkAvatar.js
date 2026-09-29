@@ -67,7 +67,8 @@ async function walkAvatarTo(avatar, target, options = {}) {
     const scene = mesh.getScene();
 
     stopAvatarWalk(avatar);
-    if (typeof stopAvatarClip === "function") stopAvatarClip(avatar); // avatarClips.js, if loaded
+    // avatarClips.js, if loaded: stop its clip but keep the pose, so the walk blends in from it
+    if (typeof releaseAvatarClip === "function") releaseAvatarClip(avatar);
     const token = { cancelled: false, cleanup: null };
     avatar._walkToken = token;
 
@@ -228,6 +229,13 @@ function runEachFrame(scene, token, step) {
     });
 }
 
+/// The node's position before any clip moved it (avatarClips.js keeps that pose
+/// in avatar._clipRest while clips play one after the other).
+function getAvatarRestPosition(avatar, node) {
+    const saved = (avatar._clipRest || []).find(entry => entry.node === node);
+    return saved ? saved.position : node.position;
+}
+
 function getAvatarCircleCenter(avatar) {
     const data = avatar.avatarData;
     return new BABYLON.Vector3(data.targetX, data.y, data.targetZ);
@@ -270,7 +278,7 @@ async function getAvatarWalker(avatar) {
         const node = nodesByName.get(track.nodeName);
         if (!node) continue;
         const animation = track.animation.targetProperty === "position"
-            ? rebaseRootMotion(track.animation, node.position)
+            ? rebaseRootMotion(track.animation, getAvatarRestPosition(avatar, node))
             : track.animation;
         group.addTargetedAnimation(animation, node);
         nodes.push(node);

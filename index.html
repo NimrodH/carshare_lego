@@ -23,9 +23,10 @@
     <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
 
     <script src="avatar.js"></script>
-    <script src="avatarPoses.js"></script>
-    <script src="poseManager.js"></script>
     <script src="walkAvatar.js"></script>
+    <script src="avatarClips.js"></script>
+    <script src="avatarStateClips.js"></script>
+    <script src="avatarStateAnimator.js"></script>
     <script src="message.js"></script>
     <script src="world.js"></script>
     <script src="avatarRegistry.js"></script>
@@ -707,6 +708,11 @@
 
             // Initial camera position update
             //updateCameraPosition();
+
+            // The camera is at the center of the circle (not walked out towards the
+            // avatars). World uses it to decide when the chat partner walks in and
+            // when a waiting avatar reacts to being looked at.
+            window.isCameraAtCenter = () => R === 0 && targetR === 0;
 
 
             ////////////////

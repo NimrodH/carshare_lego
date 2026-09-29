@@ -439,7 +439,7 @@ class Avatar {
             return null;
         }
         this.avatarMesh = root;
-        this.importResult = result; ///kept for poseManager.js (rig transform nodes for posing)
+        this.importResult = result; ///kept for the clips (rig transform nodes), see avatarClips.js
         if (this.avatarType === "C") {
             this.hideAvatarMeshes();
         }
@@ -454,12 +454,6 @@ class Avatar {
         this.avatarMesh.computeWorldMatrix(true);
         const headBounds = this.avatarMesh.getHierarchyBoundingVectors(true);
         this.avatarHeadTopY = headBounds.max.y;
-
-        // Posing only applies to rigged GLB avatars, never lego (type "A") avatars, which return earlier above.
-        const avatarId = this.avatarData.id;
-        if (hasAvatarPose(avatarId, "neutral")) {
-            applyPose(this.importResult, avatarId, "neutral");
-        }
     }
     ///place the avatar in the world
     placeAvatar() {
@@ -561,8 +555,10 @@ class Avatar {
 
     setState(state) {
         this.frontSign.setState(state);
+        if (typeof onAvatarUiState === "function") onAvatarUiState(this, state); // avatarStateAnimator.js
     }
     setDone() {
         this.frontSign.setState("done");
+        if (typeof onAvatarUiState === "function") onAvatarUiState(this, "done");
     }
 }

@@ -374,6 +374,7 @@ class Chat {
                         meSrv.chatID !== this.chatID;
 
                     if (ended) {
+                        const agreed = this.myWorld.chatAgreed?.(this);
                         const partnerID =
                             (this.myWorld.myAvatar.ID === this.avatarFromID) ? this.avatarToID : this.avatarFromID;
 
@@ -388,7 +389,7 @@ class Chat {
 
                         this.dispose();
                         if (this.myWorld.currChat === this) this.myWorld.currChat = null;
-                        this.myWorld.walkPartnerHome?.();
+                        this.myWorld.walkPartnerHome?.(agreed);
                         this.myWorld.allowPointer = true;
                         this.myWorld.startPeriodicUpdate();
                         return;
@@ -444,12 +445,14 @@ class Chat {
     dealDoneSelected() {
         this.buttonClose.isEnabled = true;
         this.dealResult = "dealDone";
+        this.myDealDoneLines = (this.myDealDoneLines || 0) + 1; // see World.chatAgreed()
         this.myWorld.dealDoneSelected(this.chatID, this.avatarFromID, this.avatarToID);
     }
 
     dealNotDoneSelected() {
         this.buttonClose.isEnabled = true;
         this.dealResult = "notDone";
+        this.myNoDealLines = (this.myNoDealLines || 0) + 1; // see World.chatAgreed()
         this.myWorld.dealNotDoneSelected(this.chatID, this.avatarFromID, this.avatarToID);
     }
 
