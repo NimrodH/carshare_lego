@@ -578,7 +578,7 @@
             });
         }
 
-        var createDefaultEngine = function () { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }); };
+        var createDefaultEngine = function () { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }, true); // true: draw at the screen's real resolution };
 
         var sceneToRender = null;
 

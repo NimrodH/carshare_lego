@@ -16,6 +16,8 @@ class AvatarMessage {
         this.plane = BABYLON.MeshBuilder.CreatePlane("plane", { height: planeSize, width: -planeSize * SIGN_WIDTH_RATIO });
         this.advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
             this.plane, Math.round(SIGN_TEXTURE_SIZE * SIGN_WIDTH_RATIO), SIGN_TEXTURE_SIZE);
+        // Keeps the text sharp when the sign is seen at an angle (from the center).
+        this.advancedTexture.anisotropicFilteringLevel = 16;
         //this.plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y;///without it its mirror
         //this.plane.position = new BABYLON.Vector3(x, y, z);
         ///this.plane.position = new BABYLON.Vector3(0, 0, 0);///////////////
@@ -77,6 +79,10 @@ class AvatarMessage {
         let text1 = this.textField;
         text1.color = "white"
         text1.fontSize = SIGN_FONT_SIZE;
+        // Bold with a dark outline, so the text stays readable when it is small on screen.
+        text1.fontWeight = "bold";
+        text1.outlineWidth = 4;
+        text1.outlineColor = "black";
         text1.textWrapping = true;
         text1.width = "96%";
         // From the top of the sign down to just above the button, and never
