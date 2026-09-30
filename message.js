@@ -1,12 +1,21 @@
 "use strict"
 
+// The green sign above each avatar. The texture keeps 1024 pixels per sign
+// height; the sign is SIGN_WIDTH_RATIO times wider than it is tall, and the
+// extra width goes to the text. The button keeps its old size and place.
+const SIGN_TEXTURE_SIZE = 1024;
+const SIGN_WIDTH_RATIO = 1.3;
+const SIGN_FONT_SIZE = 48;        // largest text size; long signs shrink to fit
+const SIGN_TEXT_BOTTOM_PX = 715;  // text stays above this line (the button starts at 727)
+
 class AvatarMessage {
     //nextButton;///also sent as parameter in new session and called from there
     constructor(planeSize, x, y, z, signData, avatar) {
         console.log("in AvatarMessage")
         this.myAvatar = avatar;
-        this.plane = BABYLON.MeshBuilder.CreatePlane("plane", { height: planeSize, width: -planeSize });
-        this.advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(this.plane);
+        this.plane = BABYLON.MeshBuilder.CreatePlane("plane", { height: planeSize, width: -planeSize * SIGN_WIDTH_RATIO });
+        this.advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
+            this.plane, Math.round(SIGN_TEXTURE_SIZE * SIGN_WIDTH_RATIO), SIGN_TEXTURE_SIZE);
         //this.plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y;///without it its mirror
         //this.plane.position = new BABYLON.Vector3(x, y, z);
         ///this.plane.position = new BABYLON.Vector3(0, 0, 0);///////////////
@@ -49,7 +58,7 @@ class AvatarMessage {
 
 
         this.nextButton = BABYLON.GUI.Button.CreateSimpleButton("but1", "לחץ להתחת שיחה");
-        this.nextButton.width = 1;
+        this.nextButton.width = `${SIGN_TEXTURE_SIZE}px`; // same size as before the sign got wider
         this.nextButton.height = 0.4;
         this.nextButton.color = "white";
         this.nextButton.fontSize = 50;
@@ -67,15 +76,25 @@ class AvatarMessage {
 
         let text1 = this.textField;
         text1.color = "white"
-        text1.fontSize = 36;
-        text1.top = "-150px";
-        text1.height = "700px"
+        text1.fontSize = SIGN_FONT_SIZE;
+        text1.textWrapping = true;
+        text1.width = "96%";
+        // From the top of the sign down to just above the button, and never
+        // catches clicks, so the button stays clickable.
+        text1.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+        text1.top = "0px";
+        text1.height = `${SIGN_TEXT_BOTTOM_PX}px`;
+        text1.isHitTestVisible = false;
         this.advancedTexture.addControl(text1);
         this.updateText(this.createMessage(signData));
     }
 
     updateText(theText) {
         this.textField.text = theText;
+        // Shrink the font for long signs so every line fits above the button.
+        const lines = String(theText).split("\n").length;
+        const fitting = Math.floor(SIGN_TEXT_BOTTOM_PX / (lines * 1.2));
+        this.textField.fontSize = Math.max(24, Math.min(SIGN_FONT_SIZE, fitting));
     }
 
     createMessage(signData) {
