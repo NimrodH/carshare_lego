@@ -22,6 +22,9 @@
 //                        there, otherwise half the way to the camera
 //           "walkHome" - walk back to the avatar's place and face the center
 //     turnAfter: same values as turnBefore
+//     holdSign: true  - before anything else, take the sign off the avatar so it keeps
+//                       facing the center while the avatar turns; it goes back on the
+//                       avatar the next time the avatar turns to face the center
 //     next: "<state>"  - continue with this state
 
 const AVATAR_STATE_CLIPS = {
@@ -77,7 +80,8 @@ const AVATAR_STATE_CLIPS = {
     busyEnd: { turnBefore: "center", next: "waiting" },
 
     // The user left (status "done"): turn the back to the center
-    left: { turnBefore: { degrees: 180 }, play: "loop", clips: ["_Standing_Idle_*"] },
+    // (the sign stays facing the center until the avatar turns back to it)
+    left: { holdSign: true, turnBefore: { degrees: 180 }, play: "loop", clips: ["_Standing_Idle_*"] },
 
     // The user came back with the same ID: face the center again
     returned: { turnBefore: "center", next: "waiting" }

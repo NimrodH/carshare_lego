@@ -49,6 +49,8 @@ function setAvatarAnimState(avatar, stateName) {
     const anim = getAvatarAnim(avatar);
     if (anim.state === stateName) return;
 
+    if (CHAT_ANIM_STATES.has(stateName)) releaseAvatarSign(avatar); // the sign walks with the avatar
+
     anim.state = stateName;
     const generation = ++anim.generation;
     runAvatarAnimState(avatar, definition, generation)
@@ -65,6 +67,15 @@ function stopAvatarAnimState(avatar) {
     avatar._anim.generation++;
     stopAvatarWalk(avatar);
     stopAvatarClip(avatar);
+    releaseAvatarSign(avatar);
+}
+
+/// Called by Avatar after it made a new sign. If the old sign was held facing the
+/// center, the new one is held the same way.
+function onAvatarSignCreated(avatar) {
+    if (!avatar._heldSign) return;
+    avatar._heldSign = null;
+    holdAvatarSign(avatar);
 }
 
 /// Only rigged avatars that this session shows can be animated
@@ -166,6 +177,7 @@ async function runAvatarAnimState(avatar, definition, generation) {
     const isMan = !!avatar.avatarData.loadedIsMan;
     const clips = definition.clips ? resolveStateClips(isMan, definition.clips) : [];
 
+    if (definition.holdSign) holdAvatarSign(avatar);
     if (definition.turnBefore && !await turnAvatarForState(avatar, definition.turnBefore, isCurrent)) return;
 
     if (definition.play === "one") {
@@ -270,7 +282,81 @@ async function turnAvatarForState(avatar, turn, isCurrent) {
     avatar._walkToken = token;
     const turned = await turnAvatarTowards(avatar, point, STATE_ANIM_SETTINGS.turnSeconds, token);
     if (avatar._walkToken === token) avatar._walkToken = null;
+    if (turned && turn === "center") releaseAvatarSign(avatar); // facing the center again
     return turned && isCurrent();
+}
+
+
+// ============================================================
+// SIGN FACING THE CENTER
+// ============================================================
+
+/// Take the sign off the avatar and leave it where it would be if the avatar faced
+/// the center, so the avatar can turn around without turning the sign.
+function holdAvatarSign(avatar) {
+    const plane = avatar.frontSign && avatar.frontSign.plane;
+    const mesh = avatar.avatarMesh;
+    if (!plane || plane.isDisposed() || avatar._heldSign === plane || plane.parent !== mesh) return;
+
+    const local = {
+        position: plane.position.clone(),
+        rotation: plane.rotation.clone(),
+        rotationQuaternion: plane.rotationQuaternion ? plane.rotationQuaternion.clone() : null,
+        scaling: plane.scaling.clone()
+    };
+    const localMatrix = BABYLON.Matrix.Compose(
+        local.scaling,
+        local.rotationQuaternion || BABYLON.Quaternion.FromEulerVector(local.rotation),
+        local.position);
+    const world = localMatrix.multiply(getCenterFacingMatrix(avatar));
+
+    plane.parent = null;
+    const scaling = new BABYLON.Vector3();
+    const rotation = new BABYLON.Quaternion();
+    const position = new BABYLON.Vector3();
+    world.decompose(scaling, rotation, position);
+    plane.scaling.copyFrom(scaling);
+    plane.rotationQuaternion = rotation;
+    plane.position.copyFrom(position);
+
+    avatar._heldSign = plane;
+    avatar._heldSignLocal = local;
+}
+
+/// Put a held sign back on the avatar, in its usual place.
+function releaseAvatarSign(avatar) {
+    const plane = avatar._heldSign;
+    const local = avatar._heldSignLocal;
+    avatar._heldSign = null;
+    avatar._heldSignLocal = null;
+    if (!plane || plane.isDisposed()) return;
+
+    plane.parent = avatar.avatarMesh;
+    plane.position.copyFrom(local.position);
+    plane.scaling.copyFrom(local.scaling);
+    if (local.rotationQuaternion) {
+        plane.rotationQuaternion = local.rotationQuaternion;
+    } else {
+        plane.rotationQuaternion = null;
+        plane.rotation.copyFrom(local.rotation);
+    }
+}
+
+/// The avatar's world matrix as it would be if it stood where it is, facing the center.
+function getCenterFacingMatrix(avatar) {
+    const mesh = avatar.avatarMesh;
+    const center = getAvatarCircleCenter(avatar);
+    const savedQuaternion = mesh.rotationQuaternion ? mesh.rotationQuaternion.clone() : null;
+    const savedRotation = mesh.rotation.clone();
+
+    mesh.lookAt(new BABYLON.Vector3(center.x, mesh.position.y, center.z)); // same as turnAvatarTowards
+    mesh.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.LOCAL);
+    const matrix = mesh.computeWorldMatrix(true).clone();
+
+    mesh.rotationQuaternion = savedQuaternion;
+    if (!savedQuaternion) mesh.rotation.copyFrom(savedRotation);
+    mesh.computeWorldMatrix(true);
+    return matrix;
 }
 
 

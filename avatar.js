@@ -162,6 +162,7 @@ class Avatar {
             this.frontSign.plane.dispose();
         }
         this.frontSign = new AvatarMessage(planeSize, signX, signY, signZ, signMessageData, this)
+        if (typeof onAvatarSignCreated === "function") onAvatarSignCreated(this); // avatarStateAnimator.js
     }
 
     hideAvatarMeshes() {
