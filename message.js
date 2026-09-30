@@ -239,8 +239,15 @@ class Chat {
         this.rect1.color = "green";
         this.rect1.thickness = 4;
         this.rect1.background = "black";
-        this.rect1.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-        this.rect1.left = "-1%";
+        // Open on the side away from the partner, so the chat doesn't cover it.
+        const partner = avatarFrom.ID === world.myAvatar.ID ? avatarTo : avatarFrom;
+        if (Chat.isLeftOfScreenCenter(partner, world.scene)) {
+            this.rect1.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            this.rect1.left = "-1%";
+        } else {
+            this.rect1.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            this.rect1.left = "1%";
+        }
         this.advancedTexture.addControl(this.rect1);
 
         this.grid = new BABYLON.GUI.Grid();
@@ -407,6 +414,18 @@ class Chat {
 
 
         this.setChatState("start")
+    }
+
+    /// True when the avatar is in the left half of the screen (camera view space x < 0).
+    /// Unknown avatar or camera counts as left, which keeps the chat on the right as before.
+    static isLeftOfScreenCenter(avatar, scene) {
+        const camera = scene && scene.activeCamera;
+        if (!avatar || !avatar.avatarMesh || !camera) return true;
+        const inView = BABYLON.Vector3.TransformCoordinates(
+            avatar.avatarMesh.getAbsolutePosition(),
+            camera.getViewMatrix()
+        );
+        return inView.x < 0;
     }
 
     updateText(theText) {
