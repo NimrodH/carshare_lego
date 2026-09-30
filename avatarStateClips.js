@@ -41,10 +41,8 @@ const AVATAR_STATE_CLIPS = {
         next: "waiting"
     },
 
-    // Clicked, going to agree and start the call with me
+    // Clicked, going to start the call with me: walks in right away (no clip first)
     accepted: {
-        play: "one",
-        clips: ["_Dances_001", "_Standing_Expressions_012"],
         then: "walkIn",
         next: "talking"
     },
@@ -55,8 +53,7 @@ const AVATAR_STATE_CLIPS = {
     // End of the talk when we both agreed
     endAgree: {
         play: "one",
-        clips: ["_Dances_001", "_Dances_005", "_Dances_007",
-                "_Standing_Expressions_006", "_Standing_Expressions_012"],
+        clips: ["_Dances_001"],
         then: "walkHome",
         next: "waiting"
     },
