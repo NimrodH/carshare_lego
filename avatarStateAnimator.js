@@ -136,10 +136,17 @@ function applyAvatarUiState(avatar, uiState) {
         case "inChat":
             setAvatarAnimState(avatar, "busy");
             break;
+        case "done":
+            // The user left. Comes in with the status of every avatar in the
+            // periodic update the app already runs, so no extra checks are needed.
+            setAvatarAnimState(avatar, "left");
+            break;
         case "noChat":
         case "alreadyTalked":
-        case "done":
-            if (current === "busy") {
+            if (current === "left" || current === "returned") {
+                // The same user came back
+                setAvatarAnimState(avatar, "returned");
+            } else if (current === "busy") {
                 setAvatarAnimState(avatar, "busyEnd");
             } else if (!WAITING_ANIM_STATES.has(current)) {
                 setAvatarAnimState(avatar, "created");

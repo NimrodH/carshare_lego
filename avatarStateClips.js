@@ -77,5 +77,11 @@ const AVATAR_STATE_CLIPS = {
     },
 
     // The call with someone else finished
-    busyEnd: { turnBefore: "center", next: "waiting" }
+    busyEnd: { turnBefore: "center", next: "waiting" },
+
+    // The user left (status "done"): turn the back to the center
+    left: { turnBefore: { degrees: 180 }, play: "loop", clips: ["_Standing_Idle_*"] },
+
+    // The user came back with the same ID: face the center again, then greet
+    returned: { turnBefore: "center", next: "created" }
 };
