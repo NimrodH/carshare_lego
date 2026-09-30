@@ -97,6 +97,10 @@ function legoSetOnGround(element) {
     }
 }
 
+// How far the green sign above a (non-lego) avatar's head sits behind the head,
+// so the head doesn't poke into it when a clip moves the avatar forward.
+const SIGN_BACK_OFFSET = 0.25;
+
 class Avatar {
     constructor(avatarData, world, avatarType) {
         this.myWorld = world;
@@ -143,7 +147,7 @@ class Avatar {
         } else {
             // Non-"A" avatars float their sign above the head with a small gap.
             signY = (this.avatarHeadTopY || 1.8) + 0.3;
-            signZ = 0;
+            signZ = -SIGN_BACK_OFFSET; // the avatar faces its local +Z
         }
 
         this.userData = signData; ///The data related to the user (the one who own the avatar)
@@ -179,7 +183,7 @@ class Avatar {
         if (!this.avatarGLBFileName || this.frontSign) return;
 
         const signY = (this.avatarHeadTopY || 1.8) + 0.3;
-        this.frontSign = new AvatarMessage(0.85, 0, signY, 0, {
+        this.frontSign = new AvatarMessage(0.85, 0, signY, -SIGN_BACK_OFFSET, {
             userName: this.avatarGLBFileName,
             isLoading: false
         }, this);
