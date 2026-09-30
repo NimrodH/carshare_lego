@@ -79,10 +79,6 @@ class AvatarMessage {
         let text1 = this.textField;
         text1.color = "white"
         text1.fontSize = SIGN_FONT_SIZE;
-        // Bold with a dark outline, so the text stays readable when it is small on screen.
-        text1.fontWeight = "bold";
-        text1.outlineWidth = 4;
-        text1.outlineColor = "black";
         text1.textWrapping = true;
         text1.width = "96%";
         // From the top of the sign down to just above the button, and never
