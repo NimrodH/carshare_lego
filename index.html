@@ -617,6 +617,29 @@
             // matchUser: avatarHeadTopY(~1.8) + 0.3 gap + planeSize/2(~0.43)).
             const signTopY = 2.5;
 
+            // When this viewer is in group A (its avatar ID starts with "A", lego avatars):
+            // the world height of the top of the head of the avatar the camera faces.
+            // Otherwise null.
+            function getLegoHeadTopY() {
+                const viewerID = myWorld && myWorld.viewerAvatarID;
+                if (!viewerID || viewerID[0].toUpperCase() !== "A") return null;
+                let best = null;
+                let bestDiff = Infinity;
+                for (const avatar of myWorld._avatarsArr || []) {
+                    const mesh = avatar.avatarMesh;
+                    if (!mesh || !avatar.avatarHeadTopY) continue;
+                    const avatarAngle = Math.atan2(mesh.position.z, mesh.position.x);
+                    const diff = Math.abs(Math.atan2(Math.sin(avatarAngle - angle), Math.cos(avatarAngle - angle)));
+                    if (diff < bestDiff) {
+                        bestDiff = diff;
+                        best = avatar;
+                    }
+                }
+                if (!best) return null;
+                const mesh = best.avatarMesh;
+                return mesh.position.y + best.avatarHeadTopY * ((mesh.scaling && mesh.scaling.y) || 1);
+            }
+
             // Move `current` toward `target` by at most `maxDelta`, without overshooting.
             function moveTowards(current, target, maxDelta) {
                 if (Math.abs(target - current) <= maxDelta) return target;
@@ -633,13 +656,17 @@
                 // Raise the camera and its look-at point together as the user walks
                 // in, so the upper edge of the green sign stays in view instead of
                 // sliding above the frame as the avatar gets closer/taller-looking.
-                camera.position.y = BABYLON.Scalar.Lerp(baseCameraY, signTopY - 0.4, zoomT);
+                // Lego avatars (group A): aim at the avatar's head instead of the sign above it.
+                const legoHeadY = getLegoHeadTopY();
+                const cameraTopY = legoHeadY !== null ? legoHeadY : signTopY - 0.4;
+                const lookTopY = legoHeadY !== null ? legoHeadY : signTopY;
+                camera.position.y = BABYLON.Scalar.Lerp(baseCameraY, cameraTopY, zoomT);
 
                 // Extend the target point outward from the center
                 const targetDistance = R + 2; // 2 units further out to define the facing direction
                 const targetX = targetDistance * Math.cos(angle);
                 const targetZ = targetDistance * Math.sin(angle);
-                const targetY = BABYLON.Scalar.Lerp(baseCameraY - 0.2, signTopY, zoomT);
+                const targetY = BABYLON.Scalar.Lerp(baseCameraY - 0.2, lookTopY, zoomT);
 
                 // Make the camera face outward (away from the center)
                 camera.setTarget(new BABYLON.Vector3(targetX, targetY, targetZ));
