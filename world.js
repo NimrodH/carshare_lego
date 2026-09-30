@@ -394,7 +394,7 @@ class World {
     }
 
     // ---------- CHAT WALK (see walkAvatar.js) ----------
-    // The chat partner plays its "accepted" clip and walks towards the viewer when
+    // The chat partner walks towards the viewer when
     // a chat starts, and back to its place when it ends.
     walkPartnerIn(partner) {
         if (!partner?.avatarMesh) return;
