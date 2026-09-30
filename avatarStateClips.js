@@ -28,10 +28,7 @@ const AVATAR_STATE_CLIPS = {
     // Every avatar, until it gets a user (and so avatars never show the bind pose)
     standing: { play: "hold", clips: ["_Standing_Idle_001"] },
 
-    // Just created and ready to get a call
-    created: { play: "one", clips: ["_Standing_Expressions_013"], next: "waiting" },
-
-    // Waiting to get a call
+    // Ready and waiting to get a call (also right after the avatar gets its user)
     waiting: { play: "loop", clips: ["_Standing_Idle_*"] },
 
     // The camera points at the avatar while it waits
@@ -82,6 +79,6 @@ const AVATAR_STATE_CLIPS = {
     // The user left (status "done"): turn the back to the center
     left: { turnBefore: { degrees: 180 }, play: "loop", clips: ["_Standing_Idle_*"] },
 
-    // The user came back with the same ID: face the center again, then greet
-    returned: { turnBefore: "center", next: "created" }
+    // The user came back with the same ID: face the center again
+    returned: { turnBefore: "center", next: "waiting" }
 };

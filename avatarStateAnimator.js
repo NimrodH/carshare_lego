@@ -32,7 +32,7 @@ const STATE_ANIM_SETTINGS = {
 // server status of that avatar is ignored while they run.
 const CHAT_ANIM_STATES = new Set(["accepted", "talking", "endAgree", "endNoAgree"]);
 // States that already mean "waiting for a call".
-const WAITING_ANIM_STATES = new Set(["created", "waiting", "lookedAt", "busyEnd"]);
+const WAITING_ANIM_STATES = new Set(["waiting", "lookedAt", "busyEnd"]);
 
 
 // ============================================================
@@ -149,7 +149,7 @@ function applyAvatarUiState(avatar, uiState) {
             } else if (current === "busy") {
                 setAvatarAnimState(avatar, "busyEnd");
             } else if (!WAITING_ANIM_STATES.has(current)) {
-                setAvatarAnimState(avatar, "created");
+                setAvatarAnimState(avatar, "waiting");
             }
             break;
         // loading, me, myChat, refuseChat: keep what is playing
