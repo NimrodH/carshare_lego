@@ -97,6 +97,10 @@ function legoSetOnGround(element) {
     }
 }
 
+// How far the green sign above a (non-lego) avatar's head sits behind the head,
+// so the head doesn't poke into it when a clip moves the avatar forward.
+const SIGN_BACK_OFFSET = 0.25;
+
 class Avatar {
     constructor(avatarData, world, avatarType) {
         this.myWorld = world;
@@ -143,7 +147,7 @@ class Avatar {
         } else {
             // Non-"A" avatars float their sign above the head with a small gap.
             signY = (this.avatarHeadTopY || 1.8) + 0.3;
-            signZ = 0;
+            signZ = -SIGN_BACK_OFFSET; // the avatar faces its local +Z
         }
 
         this.userData = signData; ///The data related to the user (the one who own the avatar)
@@ -158,6 +162,7 @@ class Avatar {
             this.frontSign.plane.dispose();
         }
         this.frontSign = new AvatarMessage(planeSize, signX, signY, signZ, signMessageData, this)
+        if (typeof onAvatarSignCreated === "function") onAvatarSignCreated(this); // avatarStateAnimator.js
     }
 
     hideAvatarMeshes() {
@@ -179,7 +184,7 @@ class Avatar {
         if (!this.avatarGLBFileName || this.frontSign) return;
 
         const signY = (this.avatarHeadTopY || 1.8) + 0.3;
-        this.frontSign = new AvatarMessage(0.85, 0, signY, 0, {
+        this.frontSign = new AvatarMessage(0.85, 0, signY, -SIGN_BACK_OFFSET, {
             userName: this.avatarGLBFileName,
             isLoading: false
         }, this);
@@ -439,7 +444,7 @@ class Avatar {
             return null;
         }
         this.avatarMesh = root;
-        this.importResult = result; ///kept for poseManager.js (rig transform nodes for posing)
+        this.importResult = result; ///kept for the clips (rig transform nodes), see avatarClips.js
         if (this.avatarType === "C") {
             this.hideAvatarMeshes();
         }
@@ -454,12 +459,6 @@ class Avatar {
         this.avatarMesh.computeWorldMatrix(true);
         const headBounds = this.avatarMesh.getHierarchyBoundingVectors(true);
         this.avatarHeadTopY = headBounds.max.y;
-
-        // Posing only applies to rigged GLB avatars, never lego (type "A") avatars, which return earlier above.
-        const avatarId = this.avatarData.id;
-        if (hasAvatarPose(avatarId, "neutral")) {
-            applyPose(this.importResult, avatarId, "neutral");
-        }
     }
     ///place the avatar in the world
     placeAvatar() {
@@ -487,6 +486,23 @@ class Avatar {
                 });
             }
         }
+    }
+
+    ///walk animation (see walkAvatar.js); each resolves true on arrival, false if cancelled
+    walkToCenter(options) {
+        return walkAvatarToCenter(this, options);
+    }
+
+    walkHome(options) {
+        return walkAvatarHome(this, options);
+    }
+
+    stopWalking() {
+        stopAvatarWalk(this);
+    }
+
+    get isWalking() {
+        return isAvatarWalking(this);
     }
 
     chatRequest() {
@@ -544,8 +560,10 @@ class Avatar {
 
     setState(state) {
         this.frontSign.setState(state);
+        if (typeof onAvatarUiState === "function") onAvatarUiState(this, state); // avatarStateAnimator.js
     }
     setDone() {
         this.frontSign.setState("done");
+        if (typeof onAvatarUiState === "function") onAvatarUiState(this, "done");
     }
 }

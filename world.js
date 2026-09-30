@@ -1,6 +1,16 @@
 // world.js — merged HTTP-only version
 // Combines full visual/avatar logic from old version with new HTTP communication
 
+// How far from the center of the circle (where the viewer's camera stands)
+// the chat partner stops after walking in.
+const CHAT_WALK_STOP_DISTANCE = 2.5;
+
+// Look-at reactions (see startCameraWatch()).
+const CAMERA_WATCH_MS = 200;          // how often the camera is checked
+const LOOK_AT_MAX_DEGREES = 10;       // how close to the middle of the view the avatar must be
+const LOOK_AT_DWELL_SECONDS = 0.5;    // how long the camera must stay on it
+const LOOK_AT_COOLDOWN_SECONDS = 8;   // before the same avatar reacts again
+
 class World {
     constructor(scene) {
         this.PERIODIC_UPDATE_MS = 10000; // 20000 ->20s (safe minimum)
@@ -13,6 +23,9 @@ class World {
         this.currChat = null;
         this.periodicUpdateInterval = null;
         this.stickyUntilDone = new Set();
+        this.chatPartner = null; // avatar in a chat with me (local only, not synced)
+        this.cameraWatch = null;
+        this.gaze = null; // { avatar, seconds, reacted } - the avatar the camera points at
     }
 
     // 1) Helper: read current status of a specific avatar (no writes)
@@ -78,6 +91,7 @@ class World {
             await avatar.placeAvatar();
             this._avatarsArr.push(avatar);
         }
+        await this.startAvatarAnimations();
 
         this.msg.updateMessageText("ממתין לאחרים");
         this.allowPointer = true;
@@ -111,6 +125,7 @@ class World {
         await this.periodicUpdate();
         console.log("[WORLD] wellcomeDone: after first periodicUpdate");
         this.startPeriodicUpdate();
+        this.startCameraWatch();
         console.log("[WORLD] Welcome complete");
     }
 
@@ -218,6 +233,7 @@ class World {
                     this.currChat = new Chat(this.myAvatar, partner, this, meSrv.chatID);
                     if (partner.setState) partner.setState("myChat");
                     if (this.myAvatar.setState) this.myAvatar.setState("myChat");
+                    this.walkPartnerIn(partner);
                     console.log("[CHAT] Auto-opened incoming chat:", meSrv.chatID);
                     this.stopPeriodicUpdate();
                     this.allowPointer = false;
@@ -238,6 +254,7 @@ class World {
                     meSrv.chatID !== this.currChat.chatID ||
                     meSrv.partnerID !== partnerID;
                 if (shouldClose) {
+                    const agreed = this.chatAgreed(this.currChat);
                     // Local close (do NOT call /chat/end again)
                     this.currChat.dispose?.();
                     this.currChat = null;
@@ -251,6 +268,7 @@ class World {
 
                     // keep my own state as noChat
                     if (this.myAvatar?.setState) this.myAvatar.setState("noChat");
+                    this.walkPartnerHome(agreed);
                     console.log("[CHAT] Auto-closed (remote end detected)");
                 }
             }
@@ -280,6 +298,149 @@ class World {
 
     idToAvatar(id) {
         return this._avatarsArr.find(a => a.avatarID === id);
+    }
+
+    // ---------- AVATAR ANIMATION (see avatarStateAnimator.js) ----------
+    // Every avatar stands in an idle pose until it gets a user; then its sign
+    // state drives its clips (Avatar.setState -> onAvatarUiState).
+    async startAvatarAnimations() {
+        if (typeof setAvatarAnimState !== "function") return;
+        const animated = this._avatarsArr.filter(canAnimateAvatar);
+        const isManValues = [...new Set(animated.map(a => !!a.avatarData.loadedIsMan))];
+        if (isManValues.length === 0) return;
+        await preloadStateClips(this.scene, isManValues, ["standing"]);
+        animated.forEach(avatar => setAvatarAnimState(avatar, "standing"));
+        // The rest downloads in the background, so a clip is ready when its state comes.
+        preloadStateClips(this.scene, isManValues);
+    }
+
+    /// True while the viewer's camera stands at the center of the circle
+    /// (index.html sets window.isCameraAtCenter; the user can walk it out towards
+    /// the avatars and back).
+    isCameraAtCenter() {
+        return typeof window.isCameraAtCenter === "function" ? window.isCameraAtCenter() : true;
+    }
+
+    /// Checks the camera a few times a second, wherever it is, and lets a waiting
+    /// avatar react when the camera points at it.
+    startCameraWatch() {
+        if (this.cameraWatch) return;
+        let elapsedMs = 0;
+        this.cameraWatch = this.scene.onBeforeRenderObservable.add(() => {
+            elapsedMs += this.scene.getEngine().getDeltaTime();
+            if (elapsedMs < CAMERA_WATCH_MS) return;
+            const seconds = elapsedMs / 1000;
+            elapsedMs = 0;
+            this.updateGaze(seconds);
+        });
+    }
+
+    updateGaze(seconds) {
+        const camera = this.scene.activeCamera;
+        if (!camera || this.currChat || typeof setAvatarAnimState !== "function") {
+            this.gaze = null;
+            return;
+        }
+        const forward = camera.getDirection(BABYLON.Axis.Z);
+        forward.y = 0;
+        forward.normalize();
+        const eye = camera.globalPosition || camera.position;
+
+        let target = null;
+        let targetDegrees = LOOK_AT_MAX_DEGREES;
+        for (const avatar of this._avatarsArr) {
+            if (avatar === this.myAvatar || !avatar.userData?.avatarID || !canAnimateAvatar(avatar)) continue;
+            const toAvatar = avatar.avatarMesh.position.subtract(eye);
+            toAvatar.y = 0;
+            if (toAvatar.lengthSquared() < 0.0001) continue;
+            toAvatar.normalize();
+            const degrees = BABYLON.Tools.ToDegrees(Math.acos(BABYLON.Scalar.Clamp(BABYLON.Vector3.Dot(forward, toAvatar), -1, 1)));
+            if (degrees < targetDegrees) {
+                target = avatar;
+                targetDegrees = degrees;
+            }
+        }
+
+        if (!target) {
+            this.gaze = null;
+            return;
+        }
+        if (!this.gaze || this.gaze.avatar !== target) {
+            this.gaze = { avatar: target, seconds: 0, reacted: false };
+            return;
+        }
+        this.gaze.seconds += seconds;
+        const now = performance.now();
+        if (!this.gaze.reacted
+            && this.gaze.seconds >= LOOK_AT_DWELL_SECONDS
+            && getAvatarAnimState(target) === "waiting"
+            && now >= (target._lookAtReadyAt || 0)) {
+            this.gaze.reacted = true; // once per look
+            target._lookAtReadyAt = now + LOOK_AT_COOLDOWN_SECONDS * 1000;
+            setAvatarAnimState(target, "lookedAt");
+        }
+    }
+
+    /// Whether we both chose [agree]: my own last choice, and a [dealDone] line in
+    /// the chat that isn't mine and no [noDeal] line that isn't mine (the chat text
+    /// doesn't say who wrote a line, so the Chat counts the lines I sent).
+    chatAgreed(chat) {
+        if (!chat || chat.dealResult !== "dealDone") return false;
+        const text = (chat.getText && chat.getText()) || "";
+        const count = line => text.split(line).length - 1;
+        const partnerAgreed = count("[dealDone]") > (chat.myDealDoneLines || 0);
+        const partnerRefused = count("[noDeal]") > (chat.myNoDealLines || 0);
+        return partnerAgreed && !partnerRefused;
+    }
+
+    // ---------- CHAT WALK (see walkAvatar.js) ----------
+    // The chat partner plays its "accepted" clip and walks towards the viewer when
+    // a chat starts, and back to its place when it ends.
+    walkPartnerIn(partner) {
+        if (!partner?.avatarMesh) return;
+        if (this.chatPartner && this.chatPartner !== partner) this.walkPartnerHome(false);
+        this.chatPartner = partner;
+        if (typeof canAnimateAvatar === "function" && canAnimateAvatar(partner)) {
+            setAvatarAnimState(partner, "accepted"); // its "walkIn" step calls walkPartnerToViewer()
+        } else {
+            // no clips (lego avatars): just walk
+            this.walkPartnerToViewer(partner)
+                .catch(err => console.warn("[WALK] walk in failed:", err));
+        }
+    }
+
+    /// Walk the chat partner towards the viewer's camera. With the camera at the
+    /// center it stops CHAT_WALK_STOP_DISTANCE from the center; with the camera
+    /// walked out towards the avatars it walks half the way to the camera and
+    /// turns to face it. Resolves true on arrival, false if cancelled.
+    walkPartnerToViewer(partner) {
+        const camera = this.scene.activeCamera;
+        if (this.isCameraAtCenter() || !camera) {
+            return partner.walkToCenter({ stopDistance: CHAT_WALK_STOP_DISTANCE });
+        }
+        const eye = camera.globalPosition || camera.position;
+        const home = new BABYLON.Vector3(partner.avatarData.x, partner.avatarData.y, partner.avatarData.z);
+        const halfway = new BABYLON.Vector3((home.x + eye.x) / 2, home.y, (home.z + eye.z) / 2);
+        return walkAvatarTo(partner, halfway, { faceAfter: new BABYLON.Vector3(eye.x, home.y, eye.z) });
+    }
+
+    /// The chat with the partner ended: it plays its end clip (agreed or not) and
+    /// walks back to its place.
+    walkPartnerHome(agreed = false) {
+        const partner = this.chatPartner;
+        if (!partner) return;
+        this.chatPartner = null;
+        if (typeof canAnimateAvatar === "function" && canAnimateAvatar(partner)) {
+            setAvatarAnimState(partner, agreed ? "endAgree" : "endNoAgree");
+            return;
+        }
+        partner.walkHome()
+            .catch(err => console.warn("[WALK] walk home failed:", err));
+    }
+
+    ///find by registry id ("avatar8"...), e.g. myWorld.registryIdToAvatar("avatar8").walkToCenter()
+    registryIdToAvatar(registryId) {
+        return this._avatarsArr.find(a => a.avatarData.id === registryId);
     }
 
     // ---------- CHAT ----------
@@ -361,6 +522,7 @@ class World {
             this.allowPointer = false;
             if (toAvatar.setState) toAvatar.setState("myChat");
             if (this.myAvatar?.setState) this.myAvatar.setState("myChat");
+            this.walkPartnerIn(toAvatar);
             console.log("[CHAT] Started with chatID:", res.chatID);
 
         } catch (err) {
@@ -416,6 +578,7 @@ class World {
 
     async closeChat(fromID, toID, result) {
         if (!this.currChat) return;
+        const agreed = this.chatAgreed(this.currChat);
         try {
             await postData("chat/end", {
                 chatID: this.currChat.chatID,
@@ -436,6 +599,7 @@ class World {
             this.currChat?.dispose?.();
             this.currChat = null;
             this.allowPointer = true;
+            this.walkPartnerHome(agreed);
 
             const partnerID = toID;
             this.stickyUntilDone.add(partnerID);
@@ -507,10 +671,12 @@ class World {
     chatEnded(fromID, toID, chatID) {
         console.log("[CHAT] End signal from", fromID, toID);
         if (this.currChat && this.currChat.chatID === chatID) {
+            const agreed = this.chatAgreed(this.currChat);
             this.currChat.dispose();
             this.currChat = null;
             this.allowPointer = true;
             this.startPeriodicUpdate();
+            this.walkPartnerHome(agreed);
         }
         const fromA = this.idToAvatar(fromID);
         const toA = this.idToAvatar(toID);

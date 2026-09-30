@@ -211,3 +211,82 @@ await playMotionSequence(scene, avatar.importResult, avatarId, "wave", {
 - Posing/animation only applies to rigged GLB avatars (`avatarType` other than
   `"A"`). Lego-block avatars (`avatarType === "A"`) have no skeleton and are
   not affected by `applyPose`/`animateToPose`/`playMotionSequence`.
+
+---
+
+## 5. Walking (walk to the center of the circle)
+
+[walkAvatar.js](walkAvatar.js) walks an avatar in a straight line using a real
+Ready Player Me walk clip (`M_Walk_001` for men, `F_Walk_002` for women, picked
+by `avatarData.loadedIsMan`). Load it after `poseManager.js`; it has no other
+dependencies beyond Babylon.js and the `Avatar` object.
+
+```js
+await avatar.walkToCenter();   // turns to the center, walks, stops 1.0 short of it
+await avatar.walkHome();       // walks back to avatarData.x/z and faces the center again
+avatar.stopWalking();          // cancel; the pending promise resolves false
+avatar.isWalking;              // true while walking/turning
+
+// In index.html the avatars live in the World:
+myWorld.registryIdToAvatar("avatar8").walkToCenter({ stopDistance: 1.5 });
+```
+
+**Chat:** in `index.html` the walk is wired to chat. When a chat starts (you
+clicked an avatar's chat button, or an incoming chat opened), the partner avatar
+walks from its place on the circle towards the center, where the viewer's camera
+stands, stopping `CHAT_WALK_STOP_DISTANCE` (2.5, in `world.js`, so the whole
+body stays in view) short of it. When
+the chat ends (closed, or ended by the other side) it walks back
+(`World.walkPartnerIn()` / `World.walkPartnerHome()`). The walk is local to each
+viewer's browser and is not sent to other viewers.
+
+Options (defaults in `WALK_DEFAULTS`): `speedRatio` (clip speed, 0.8),
+`blendSeconds` (ease in/out, 0.35), `turnSeconds` (0.4), `stopDistance` (1.0),
+`slideSpeed` (m/s for avatars without a rig, 1.2).
+
+How it works:
+- The clip GLB is loaded once per gender into an `AssetContainer` (never added
+  to the scene) and its tracks are retargeted onto each avatar's bones by name.
+- The clip moves the `Hips` bone forward as it walks; that drift is removed
+  (the clip walks in place) and the avatar's root mesh is moved instead, at the
+  clip's own forward speed times `speedRatio`, so the feet don't slide.
+- The clip's weight fades in/out with the speed, and when the walk ends the
+  bones are restored exactly to the pose they had before (e.g. `neutral`).
+- Lego avatars (`"A"`), or any avatar whose clip fails to load, just slide.
+- Several avatars sent to the center stop on a ring of radius `stopDistance`,
+  so pick a larger value if many will walk in at once.
+
+The clips are loaded straight from
+[readyplayerme/animation-library](https://github.com/readyplayerme/animation-library)
+on GitHub at a pinned commit (`WALK_CLIP_BASE_URL`). The Ready Player Me
+platform itself shut down on Jan 31 2026, but that repo is still public. Its
+license allows free personal/commercial use with Ready Player Me avatars but
+forbids redistributing the animations, which is why they are not copied into
+this repo. To serve them yourself (e.g. if the repo disappears), copy the two
+GLBs keeping the `masculine/glb/locomotion/` and `feminine/glb/locomotion/`
+layout and set `WALK_CLIP_BASE_URL = "Avatars/animations/"`.
+
+---
+
+## 6. Testing animations — `animDemo.html`
+
+[animDemo.html](animDemo.html) shows the same scene, camera point (center of
+the circle) and avatar circle as `index.html`, with no sign-in, server or chat.
+Pick an avatar (or tap it), then press **Walk in** / **Walk home** / **Stop**;
+**◀ turn / turn ▶** (or tapping the ground, like the app) turns the camera.
+
+Open it at `http://localhost:5500/animDemo.html` (`npm run dev`), or on GitHub
+Pages at `https://nimrodh.github.io/carshare_lego/animDemo.html` once merged.
+
+**Clip** lists all 119 clips of the Ready Player Me animation library
+(idle, expression, dance, locomotion); **▶ Play** plays the selected one on the
+selected avatar (looping if **loop** is ticked), **■ Stop clip** / **Stop**
+stop it and restore the avatar's pose. Clips are played as authored by
+[avatarClips.js](avatarClips.js) (`playAvatarClip()` / `stopAvatarClip()`):
+body movement is not corrected, so jumps/falls move up and down and
+walk/run clips move forward and snap back each loop. Starting a walk stops a
+playing clip.
+
+To try a new animation before adding it to the app, add an entry to
+`DEMO_ACTIONS` at the top of the page's script — it becomes a button that runs
+`run(avatar)` on the selected avatar (and load any extra scripts it needs).
