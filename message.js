@@ -89,6 +89,16 @@ class AvatarMessage {
         text1.isHitTestVisible = false;
         this.advancedTexture.addControl(text1);
         this.updateText(this.createMessage(signData));
+
+        // Group B (real avatars): hovering the sign shows its text in a readable popup
+        if (this.myAvatar.avatarType === "B") {
+            this.plane.actionManager = new BABYLON.ActionManager(scene);
+            this.plane.actionManager.hoverCursor = "default";
+            this.plane.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPointerOverTrigger, () => SignPopup.show(this)));
+            this.plane.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPointerOutTrigger, () => SignPopup.hide(this)));
+        }
     }
 
     updateText(theText) {
@@ -235,6 +245,145 @@ class AvatarMessage {
         }
     }
 }
+
+
+/// A popup with the text of the sign under the mouse, drawn as page text (sharp at
+/// any distance). Only while the camera is at the center of the circle. Placed
+/// next to the sign, in the empty band above or below the avatars, so it doesn't
+/// hide them.
+class SignPopup {
+    static show(sign) {
+        const world = sign.myAvatar.myWorld;
+        const atCenter = typeof window.isCameraAtCenter === "function" && window.isCameraAtCenter();
+        if (!atCenter || (world && world.currChat)) return;
+        const text = sign.textField && sign.textField.text;
+        if (!text) return;
+
+        const box = SignPopup.getBox();
+        box.textContent = text;
+        box.style.display = "block";
+        SignPopup.current = sign;
+        SignPopup.place(sign, box);
+
+        // Hide it when the camera leaves the center or a chat opens
+        if (!SignPopup.watcher) {
+            SignPopup.watcher = scene.onBeforeRenderObservable.add(() => {
+                const current = SignPopup.current;
+                const w = current && current.myAvatar.myWorld;
+                if (!current || !window.isCameraAtCenter() || (w && w.currChat) || current.plane.isDisposed()) {
+                    SignPopup.hide();
+                }
+            });
+        }
+    }
+
+    /// Hide the popup (only if it shows `sign`, when given).
+    static hide(sign) {
+        if (sign && SignPopup.current !== sign) return;
+        SignPopup.current = null;
+        if (SignPopup.box) SignPopup.box.style.display = "none";
+        if (SignPopup.watcher) {
+            scene.onBeforeRenderObservable.remove(SignPopup.watcher);
+            SignPopup.watcher = null;
+        }
+    }
+
+    static getBox() {
+        if (!SignPopup.box) {
+            const box = document.createElement("div");
+            box.style.cssText = [
+                "position:fixed", "display:none", "z-index:20", "pointer-events:none",
+                "direction:rtl", "text-align:center", "white-space:pre-line",
+                "background:rgba(0,90,0,0.92)", "color:white", "border:2px solid white",
+                "border-radius:10px", "padding:10px 16px", "box-shadow:0 4px 14px rgba(0,0,0,0.5)",
+                "font-family:Arial, sans-serif", "line-height:1.3"
+            ].join(";");
+            document.body.appendChild(box);
+            SignPopup.box = box;
+        }
+        return SignPopup.box;
+    }
+
+    /// Put the box over the sign horizontally, in the taller of the two empty
+    /// bands of the screen: above the highest avatar or sign, or below the lowest.
+    static place(sign, box) {
+        const canvas = scene.getEngine().getRenderingCanvas();
+        const rect = canvas.getBoundingClientRect();
+        const margin = 10;
+
+        let top = rect.bottom;
+        let bottom = rect.top;
+        const world = sign.myAvatar.myWorld;
+        for (const avatar of (world && world._avatarsArr) || []) {
+            const r = SignPopup.screenRect(avatar.avatarMesh, rect);
+            if (!r) continue;
+            top = Math.min(top, r.top);
+            bottom = Math.max(bottom, r.bottom);
+        }
+        if (top > bottom) { // no avatar on screen
+            top = rect.top + rect.height / 2;
+            bottom = top;
+        }
+        const above = { top: rect.top, height: Math.max(0, top - rect.top) };
+        const below = { top: bottom, height: Math.max(0, rect.bottom - bottom) };
+        const band = above.height >= below.height ? above : below;
+
+        // Largest font (24px down to 16px) that fits in the band; if even 16px
+        // doesn't fit, the lines go in two columns before the box may cover
+        // the edge of the avatars.
+        const room = Math.max(40, band.height - 2 * margin);
+        box.style.columnCount = "1";
+        box.style.maxWidth = "40vw";
+        for (let size = 24; size >= 16; size -= 2) {
+            box.style.fontSize = `${size}px`;
+            if (box.offsetHeight <= room) break;
+        }
+        if (box.offsetHeight > room) {
+            box.style.columnCount = "2";
+            box.style.columnGap = "24px";
+            box.style.maxWidth = "80vw";
+            for (let size = 24; size >= 16; size -= 2) {
+                box.style.fontSize = `${size}px`;
+                if (box.offsetHeight <= room) break;
+            }
+        }
+
+        const signRect = SignPopup.screenRect(sign.plane, rect);
+        const centerX = signRect ? (signRect.left + signRect.right) / 2 : rect.left + rect.width / 2;
+        const width = box.offsetWidth;
+        const height = box.offsetHeight;
+        const left = Math.min(Math.max(centerX - width / 2, rect.left + margin), rect.right - width - margin);
+        let y = band.top + (band.height - height) / 2;
+        if (height > room) {
+            // Too tall for the band: keep it against the screen edge of the band
+            y = band === above ? rect.top + margin : rect.bottom - height - margin;
+        }
+        box.style.left = `${left}px`;
+        box.style.top = `${Math.max(rect.top + margin, Math.min(y, rect.bottom - height - margin))}px`;
+    }
+
+    /// The page rectangle a mesh (with its children) covers, or null when it is
+    /// behind the camera or off screen.
+    static screenRect(mesh, rect) {
+        if (!mesh || mesh.isDisposed()) return null;
+        const { min, max } = mesh.getHierarchyBoundingVectors(true);
+        const viewport = scene.activeCamera.viewport.toGlobal(rect.width, rect.height);
+        const transform = scene.getTransformMatrix();
+        let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+        for (let i = 0; i < 8; i++) {
+            const corner = new BABYLON.Vector3(i & 1 ? max.x : min.x, i & 2 ? max.y : min.y, i & 4 ? max.z : min.z);
+            const p = BABYLON.Vector3.Project(corner, BABYLON.Matrix.IdentityReadOnly, transform, viewport);
+            if (p.z < 0 || p.z > 1) return null; // behind the camera
+            left = Math.min(left, p.x); right = Math.max(right, p.x);
+            top = Math.min(top, p.y); bottom = Math.max(bottom, p.y);
+        }
+        if (right < 0 || left > rect.width || bottom < 0 || top > rect.height) return null;
+        return { left: rect.left + left, right: rect.left + right, top: rect.top + top, bottom: rect.top + bottom };
+    }
+}
+SignPopup.box = null;
+SignPopup.current = null;
+SignPopup.watcher = null;
 
 class Chat {
     //constructor(avatarFrom, avatarTo, world) {
