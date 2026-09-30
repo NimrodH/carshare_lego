@@ -53,8 +53,7 @@ const AVATAR_STATE_CLIPS = {
     // End of the talk when we both agreed
     endAgree: {
         play: "one",
-        clips: ["_Dances_001", "_Dances_005", "_Dances_007",
-                "_Standing_Expressions_006", "_Standing_Expressions_012"],
+        clips: ["_Dances_001"],
         then: "walkHome",
         next: "waiting"
     },
