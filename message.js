@@ -90,15 +90,13 @@ class AvatarMessage {
         this.advancedTexture.addControl(text1);
         this.updateText(this.createMessage(signData));
 
-        // Group B (real avatars): hovering the sign shows its text in a readable popup
-        if (this.myAvatar.avatarType === "B") {
-            this.plane.actionManager = new BABYLON.ActionManager(scene);
-            this.plane.actionManager.hoverCursor = "default";
-            this.plane.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-                BABYLON.ActionManager.OnPointerOverTrigger, () => SignPopup.show(this)));
-            this.plane.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-                BABYLON.ActionManager.OnPointerOutTrigger, () => SignPopup.hide(this)));
-        }
+        // Hovering the sign shows its text in a readable popup (every group)
+        this.plane.actionManager = new BABYLON.ActionManager(scene);
+        this.plane.actionManager.hoverCursor = "default";
+        this.plane.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+            BABYLON.ActionManager.OnPointerOverTrigger, () => SignPopup.show(this)));
+        this.plane.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+            BABYLON.ActionManager.OnPointerOutTrigger, () => SignPopup.hide(this)));
     }
 
     updateText(theText) {
