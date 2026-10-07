@@ -707,22 +707,9 @@
             scene.onPointerObservable.add((pointerInfo) => {
                 switch (pointerInfo.type) {
                     case BABYLON.PointerEventTypes.POINTERWHEEL:
-                        if (!myWorld.allowPointer) {
-                            pointerInfo.event.preventDefault();
-                            return; // Ignore zoom if pointer is not allowed
-                        }
-
-                        const event = pointerInfo.event;
-                        //console.log("event.deltaY: " + event.deltaY);
-                        if (event.deltaY < 0) {
-                            // Walk in toward the sign
-                            targetR += moveSpeed;
-                        } else {
-                            // Walk back out toward the original point
-                            targetR -= moveSpeed;
-                        }
-                        targetR = BABYLON.Scalar.Clamp(targetR, 0, maxR);
-                        event.preventDefault();
+                        // The camera always stays in the center: the wheel no longer
+                        // walks it toward the circle (in every group).
+                        pointerInfo.event.preventDefault();
                         break;
 
                     //case BABYLON.PointerEventTypes.POINTERMOVE:
