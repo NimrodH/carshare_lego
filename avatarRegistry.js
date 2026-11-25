@@ -3,19 +3,6 @@
 // so everything here is exposed as a global.
 
 // ============================================================
-// DEFAULT NODE NAMES
-// ============================================================
-// Rig node names used for arm posing (wired up in a later change).
-
-const DEFAULT_AVATAR_NODES = {
-    leftArm: "LeftArm",
-    leftForeArm: "LeftForeArm",
-    rightArm: "RightArm",
-    rightForeArm: "RightForeArm"
-};
-
-
-// ============================================================
 // AVATAR REGISTRY
 // ============================================================
 // Migrated from index.html's avatarsDataArray. "num" is kept as-is since
@@ -445,24 +432,6 @@ const AVATARS = {
 
 
 // ============================================================
-// GET FINAL NODE NAMES
-// ============================================================
-
-function getAvatarNodes(avatarId) {
-    const avatar = AVATARS[avatarId];
-
-    if (!avatar) {
-        throw new Error(`Unknown avatar ID: "${avatarId}".`);
-    }
-
-    return {
-        ...DEFAULT_AVATAR_NODES,
-        ...(avatar.nodeOverrides || {})
-    };
-}
-
-
-// ============================================================
 // GET COMPLETE AVATAR DEFINITION
 // ============================================================
 
@@ -473,10 +442,7 @@ function getAvatarDefinition(avatarId) {
         throw new Error(`Unknown avatar ID: "${avatarId}".`);
     }
 
-    return {
-        ...avatar,
-        nodes: getAvatarNodes(avatarId)
-    };
+    return { ...avatar };
 }
 
 

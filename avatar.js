@@ -1,9 +1,9 @@
 
 
 ///////////////// SELF-CONTAINED LEGO BUILDING HELPERS (for avatarType A) /////////////////
-/// index.html does not load lego1.js, so avatar.js cannot rely on its global
+/// index.html does not load old_anim/lego1.js, so avatar.js cannot rely on its global
 /// functions/variables (meshBlock, elementsMenu, menuY, colorName2Vector, ...).
-/// These local equivalents mirror the geometry/colors/rotations from lego1.js
+/// These local equivalents mirror the geometry/colors/rotations from old_anim/lego1.js
 /// so avatars built from stored model data (created in the lego app) match exactly.
 
 const legoBaseColor = new BABYLON.Color3(0.54, 0.13, 0.54);
@@ -40,7 +40,7 @@ function legoRotationName2Vector(theName) {
     }
 }
 
-/// Add a connection sphere to a block/wheel, matching lego1.js naming ("p" + position)
+/// Add a connection sphere to a block/wheel, matching old_anim/lego1.js naming ("p" + position)
 function legoAddContactSphere(meshParent, meshPosition, scene) {
     let tempSphere = BABYLON.MeshBuilder.CreateSphere("p" + meshPosition, { diameter: 1.2 }, scene);
     tempSphere.parent = meshParent;
@@ -51,7 +51,7 @@ function legoAddContactSphere(meshParent, meshPosition, scene) {
     return tempSphere;
 }
 
-/// Create a rectangular block, matching lego1.js meshBlock() geometry/connection points
+/// Create a rectangular block, matching old_anim/lego1.js meshBlock() geometry/connection points
 function legoMeshBlock(scene, blockWidth) {
     const box = BABYLON.MeshBuilder.CreateBox("b" + blockWidth, { width: blockWidth, height: 1 }, scene);
     const myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
@@ -74,7 +74,7 @@ function legoMeshBlock(scene, blockWidth) {
     return box;
 }
 
-/// Create a round element (wheel), matching lego1.js meshWheel() geometry
+/// Create a round element (wheel), matching old_anim/lego1.js meshWheel() geometry
 function legoMeshWheel(scene, wheelWidth) {
     const wheel = BABYLON.MeshBuilder.CreateCylinder("c" + wheelWidth, { height: 1, diameter: 2 }, scene);
     const myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
@@ -206,7 +206,7 @@ class Avatar {
     /// Create a lego avatar from the "man" model data
     async createLegoAvatar(scene) {
         try {
-            // Use direct fetch to model database (same pattern as lego1.js)
+            // Use direct fetch to model database (same pattern as old_anim/lego1.js)
             // Do NOT use the gateway - call the API directly
             const modelURL = 'https://9ewp86ps3e.execute-api.us-east-1.amazonaws.com/development/model';
             
@@ -230,7 +230,7 @@ class Avatar {
             }
             
             // Create a base model for the avatar using self-contained lego helpers
-            // (index.html does not load lego1.js, so we cannot rely on its globals)
+            // (index.html does not load old_anim/lego1.js, so we cannot rely on its globals)
             let avatarContainer = legoMeshBlock(scene, 1);
             avatarContainer.metadata = {
                 inModel: true,
@@ -243,7 +243,7 @@ class Avatar {
             
             // Rebuild the avatar model from stored data.
             // Build ALL stored steps so the avatar shows the complete "man" model
-            // (matches reBuildModel() in lego1.js: for index = 1 to modelData.length).
+            // (matches reBuildModel() in old_anim/lego1.js: for index = 1 to modelData.length).
             const maxBlocks = manModelData.length + 1;
             
             for (let index = 1; index < maxBlocks; index++) {
@@ -287,7 +287,7 @@ class Avatar {
                 if (!destSphere) continue;
                 
                 // Calculate connection position
-                // Note: our blocks are created fresh (not cloned like in lego1.js),
+                // Note: our blocks are created fresh (not cloned like in old_anim/lego1.js),
                 // so their contact sphere names are already plain ("p-0.5", "p2", ...)
                 // with no block-name prefix. Do NOT run fullName2Private() on them again -
                 // that incorrectly truncates names whose position contains a decimal

@@ -17,4 +17,5 @@ Then open http://localhost:5500/.
 
 ## More
 
-- [AVATAR_POSES_ANIMATIONS_SETUP.md](AVATAR_POSES_ANIMATIONS_SETUP.md): how the avatar, pose and animation files fit together, and how to reuse them in another project.
+- Avatars animate with clips from the [Ready Player Me animation library](https://github.com/readyplayerme/animation-library): `walkAvatar.js`, `avatarClips.js`, `avatarStateClips.js` and `avatarStateAnimator.js`.
+- [old_anim/](old_anim/): files the app no longer loads (the old pose and motion-sequence system, the lego builder page and the animation demo page). Kept for reference; their script paths are not updated.
