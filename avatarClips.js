@@ -8,7 +8,7 @@
 // authored: the Hips bone keeps all of the clip's movement (up/down, and the
 // forward movement of walk/run clips, which snaps back each time a loop restarts).
 // Only the starting point is moved to the avatar's own rest Hips position.
-// Used by animDemo.html to try clips, and by avatarStateAnimator.js in the app.
+// Used by avatarStateAnimator.js in the app.
 //
 // Usage:
 //     await playAvatarClip(avatar, "dance", "M_Dances_001", { loop: false });

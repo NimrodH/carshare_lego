@@ -288,7 +288,7 @@ async function getAvatarWalker(avatar) {
 }
 
 function startWalkClip(scene, walker, speedRatio) {
-    // Stop any pose tweens (poseManager) on the same bones, then remember the
+    // Stop any other animation on the same bones, then remember the
     // current pose so it can be restored exactly when the walk ends.
     walker.nodes.forEach(node => scene.stopAnimation(node));
     walker.snapshot = walker.nodes.map(node => ({
